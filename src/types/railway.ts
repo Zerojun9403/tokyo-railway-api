@@ -25,9 +25,19 @@ export type RailwayTrain = {
 
   directionId: string;
 
-  departureTime: string;
+  /*
+   * 시간표 데이터에서 사용
+   */
+  departureTime?: string;
 
-  minutesUntilDeparture: number;
+  minutesUntilDeparture?: number;
+
+  /*
+   * 실시간 열차 위치 데이터에서 사용
+   */
+  fromStation?: string;
+
+  toStation?: string;
 
   trainType?: string;
 
