@@ -74,15 +74,134 @@ const KEIKYU_RAILWAY_MAP: Record<string, string> = {
 
 /*
  * =========================================================
- * Calendar
+ * Destination Name
  * =========================================================
  *
- * JavaScript getDay()
+ * ODPT의 destinationStation은
+ * 게이큐뿐 아니라 직통운전 노선의 역도 포함할 수 있다.
  *
- * 0 = Sunday
- * 1 = Monday
- * ...
- * 6 = Saturday
+ * 예:
+ *
+ * Keikyu → Toei Asakusa → Keisei → Hokuso
+ */
+
+type DestinationName = {
+  ko: string;
+  ja: string;
+};
+
+const KEIKYU_DESTINATION_MAP: Record<string, DestinationName> = {
+  /*
+   * Keikyu
+   */
+
+  Shinagawa: {
+    ko: "시나가와",
+    ja: "品川",
+  },
+
+  Sengakuji: {
+    ko: "센가쿠지",
+    ja: "泉岳寺",
+  },
+
+  KeikyuKamata: {
+    ko: "게이큐카마타",
+    ja: "京急蒲田",
+  },
+
+  KanagawaShimmachi: {
+    ko: "가나가와신마치",
+    ja: "神奈川新町",
+  },
+
+  ZushiHayama: {
+    ko: "즈시·하야마",
+    ja: "逗子・葉山",
+  },
+
+  KeikyuKurihama: {
+    ko: "게이큐쿠리하마",
+    ja: "京急久里浜",
+  },
+
+  /*
+   * Keisei
+   */
+
+  KeiseiTakasago: {
+    ko: "게이세이다카사고",
+    ja: "京成高砂",
+  },
+
+  KeiseiNarita: {
+    ko: "게이세이나리타",
+    ja: "京成成田",
+  },
+
+  NaritaAirportTerminal1: {
+    ko: "나리타공항 제1터미널",
+    ja: "成田空港第1ターミナル",
+  },
+
+  NaritaAirportTerminal2and3: {
+    ko: "나리타공항 제2·제3터미널",
+    ja: "成田空港第2・第3ターミナル",
+  },
+
+  /*
+   * Hokuso
+   */
+
+  ImbaNihonIdai: {
+    ko: "인바니혼이다이",
+    ja: "印旛日本医大",
+  },
+
+  /*
+   * Toei Asakusa / through service
+   */
+
+  NishiMagome: {
+    ko: "니시마고메",
+    ja: "西馬込",
+  },
+
+  /*
+   * Haneda Airport
+   */
+
+  HanedaAirportTerminal1and2: {
+    ko: "하네다공항 제1·제2터미널",
+    ja: "羽田空港第1・第2ターミナル",
+  },
+
+  HanedaAirportTerminal3: {
+    ko: "하네다공항 제3터미널",
+    ja: "羽田空港第3ターミナル",
+  },
+};
+
+/*
+ * =========================================================
+ * Destination Resolver
+ * =========================================================
+ */
+
+const getDestinationName = (
+  stationId?: string,
+): DestinationName | undefined => {
+  if (!stationId) {
+    return undefined;
+  }
+
+  return KEIKYU_DESTINATION_MAP[stationId];
+};
+
+/*
+ * =========================================================
+ * Calendar
+ * =========================================================
  */
 
 const getKeikyuCalendar = (): string => {
@@ -245,11 +364,6 @@ export const keikyuProvider: RailwayProvider = {
 
     const normalizedDirection = directionId.trim().toLowerCase();
 
-    /*
-     * station + direction + calendar가
-     * 모두 일치하는 시간표를 찾는다.
-     */
-
     const timetableData = data.find((item) => {
       const station = getShortName(item["odpt:station"])?.toLowerCase();
 
@@ -269,8 +383,9 @@ export const keikyuProvider: RailwayProvider = {
     }
 
     /*
-     * ODPT StationTimetable
-     * → Unified RailwayTimetable
+     * =====================================================
+     * ODPT → Unified RailwayTimetable
+     * =====================================================
      */
 
     const timetable: RailwayTimetable[] = timetableData[
@@ -281,6 +396,8 @@ export const keikyuProvider: RailwayProvider = {
         const destination = item["odpt:destinationStation"]?.[0];
 
         const destinationStation = getShortName(destination) ?? undefined;
+
+        const destinationName = getDestinationName(destinationStation);
 
         const trainType = getShortName(item["odpt:trainType"]) ?? undefined;
 
@@ -298,6 +415,10 @@ export const keikyuProvider: RailwayProvider = {
           trainType,
 
           destinationStation,
+
+          destinationKo: destinationName?.ko,
+
+          destinationJa: destinationName?.ja,
         };
       });
 
