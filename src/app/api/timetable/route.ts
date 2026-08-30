@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getProvider } from "@/lib/providers/providerRegistry";
-import type { RailwayOperator, TimetableResponse } from "@/types/railway";
+import type {
+  RailwayOperator,
+  RailwayTimetable,
+  TimetableResponse,
+} from "@/types/railway";
 
 const RAILWAY_OPERATORS: RailwayOperator[] = [
   "tokyo-metro",
@@ -13,6 +17,37 @@ const RAILWAY_OPERATORS: RailwayOperator[] = [
   "tokyu",
 ];
 
+/*
+ * =========================================================
+ * Japan Current Time
+ * =========================================================
+ */
+
+const getJapanCurrentTime = (): string => {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(new Date());
+};
+
+/*
+ * =========================================================
+ * Upcoming Timetable
+ * =========================================================
+ */
+
+const filterUpcomingTimetable = (
+  timetable: RailwayTimetable[],
+): RailwayTimetable[] => {
+  const currentTime = getJapanCurrentTime();
+
+  return timetable.filter((item) => item.departureTime >= currentTime);
+};
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
 
@@ -21,6 +56,28 @@ export async function GET(request: NextRequest) {
   const lineId = searchParams.get("lineId");
   const stationId = searchParams.get("stationId");
   const directionId = searchParams.get("directionId");
+
+  /*
+   * upcoming=true
+   * → 현재 시각 이후 열차만 반환
+   */
+
+  const upcoming = searchParams.get("upcoming") === "true";
+
+  /*
+   * limit=3
+   * → 최대 3개의 시간표만 반환
+   */
+
+  const limitParam = searchParams.get("limit");
+
+  const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
+
+  /*
+   * =======================================================
+   * Validate Parameters
+   * =======================================================
+   */
 
   if (!operator || !lineId || !stationId || !directionId) {
     return NextResponse.json(
@@ -45,6 +102,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    /*
+     * =====================================================
+     * Provider
+     * =====================================================
+     */
+
     const provider = getProvider(operator);
 
     if (!provider) {
@@ -69,6 +132,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    /*
+     * =====================================================
+     * Fetch Timetable
+     * =====================================================
+     */
+
     const timetable = await provider.getTimetable({
       operator,
       lineId,
@@ -76,13 +145,40 @@ export async function GET(request: NextRequest) {
       directionId,
     });
 
+    /*
+     * =====================================================
+     * Upcoming Filter
+     * =====================================================
+     */
+
+    const filteredTimetable = upcoming
+      ? filterUpcomingTimetable(timetable)
+      : timetable;
+
+    /*
+     * =====================================================
+     * Limit
+     * =====================================================
+     */
+
+    const limitedTimetable =
+      limit !== undefined && Number.isInteger(limit) && limit > 0
+        ? filteredTimetable.slice(0, limit)
+        : filteredTimetable;
+
+    /*
+     * =====================================================
+     * Response
+     * =====================================================
+     */
+
     const response: TimetableResponse = {
       operator,
       lineId,
       stationId,
       directionId,
       updatedAt: new Date().toISOString(),
-      timetable,
+      timetable: limitedTimetable,
     };
 
     return NextResponse.json(response);
