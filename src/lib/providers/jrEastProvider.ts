@@ -9,8 +9,9 @@ const railwayMap: Record<string, string> = {
   "chuo-rapid": "odpt.Railway:JR-East.ChuoRapid",
   "chuo-sobu": "odpt.Railway:JR-East.ChuoSobuLocal",
   saikyo: "odpt.Railway:JR-East.SaikyoKawagoe",
-   "shonan-shinjuku": "odpt.Railway:JR-East.ShonanShinjuku",
-   tokaido: "odpt.Railway:JR-East.Tokaido",
+  "shonan-shinjuku": "odpt.Railway:JR-East.ShonanShinjuku",
+  tokaido: "odpt.Railway:JR-East.Tokaido",
+  "keihin-tohoku": "odpt.Railway:JR-East.KeihinTohokuNegishi",
 };
 
 type OdptStationTimetableObject = {
