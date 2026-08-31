@@ -14,7 +14,6 @@ const containsNexKeyword = (
     text.includes("narita") ||
     text.includes("naritaexpress") ||
     text.includes("n'ex") ||
-    text.includes("nex") ||
     text.includes("成田エクスプレス")
   );
 };
