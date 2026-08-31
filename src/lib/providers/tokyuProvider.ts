@@ -1,4 +1,5 @@
 import type { RailwayTimetable } from "@/types/railway";
+import { tokyuStationNames } from "./tokyuStationNames";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api-challenge.odpt.org/api/v4";
@@ -154,6 +155,10 @@ export const tokyuProvider: RailwayProvider = {
             destinationStationFull,
           );
 
+          const destinationName = destinationStation
+            ? tokyuStationNames[destinationStation]
+            : undefined;
+
           return [
             {
               id: `tokyu-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
@@ -164,6 +169,8 @@ export const tokyuProvider: RailwayProvider = {
               departureTime,
               trainType,
               destinationStation,
+              destinationKo: destinationName?.ko,
+              destinationJa: destinationName?.ja,
             },
           ];
         });
