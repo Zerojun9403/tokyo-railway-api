@@ -100,22 +100,26 @@ export const GET = async (
       (await response.json()) as OdptStationTimetable[];
 
     const combinations = data.map(
-      (timetable) => ({
-        station: getLastSegment(
-          timetable["odpt:station"],
-        ),
-        direction: getLastSegment(
-          timetable["odpt:railDirection"],
-        ),
-        calendar: getLastSegment(
-          timetable["odpt:calendar"],
-        ),
-        timetableCount:
-          timetable[
-            "odpt:stationTimetableObject"
-          ]?.length ?? 0,
-      }),
-    );
+  (timetable) => ({
+    station: getLastSegment(
+      timetable["odpt:station"],
+    ),
+    rawStation: timetable["odpt:station"],
+    direction: getLastSegment(
+      timetable["odpt:railDirection"],
+    ),
+    rawDirection:
+      timetable["odpt:railDirection"],
+    calendar: getLastSegment(
+      timetable["odpt:calendar"],
+    ),
+    timetableCount:
+      timetable[
+        "odpt:stationTimetableObject"
+      ]?.length ?? 0,
+  }),
+);
+    
 
     const stations = Array.from(
       new Set(
