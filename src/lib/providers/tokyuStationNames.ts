@@ -101,4 +101,8 @@ export const tokyuStationNames: Record<string, TokyuStationName> = {
     ko: "쇼난다이",
     ja: "湘南台",
   },
+  Ebina: {
+  ko: "에비나",
+  ja: "海老名",
+},
 };
