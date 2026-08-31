@@ -6,6 +6,7 @@ const ODPT_API_BASE_URL =
 
 const railwayMap: Record<string, string> = {
   yamanote: "odpt.Railway:JR-East.Yamanote",
+  "chuo-rapid": "odpt.Railway:JR-East.ChuoRapid",
 };
 
 type OdptStationTimetableObject = {
