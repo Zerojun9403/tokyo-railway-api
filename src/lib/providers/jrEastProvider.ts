@@ -13,6 +13,7 @@ const railwayMap: Record<string, string> = {
   tokaido: "odpt.Railway:JR-East.Tokaido",
   "keihin-tohoku": "odpt.Railway:JR-East.KeihinTohokuNegishi",
   keiyo: "odpt.Railway:JR-East.Keiyo",
+  yokosuka: "odpt.Railway:JR-East.Yokosuka",
 };
 
 type OdptStationTimetableObject = {
