@@ -14,6 +14,7 @@ const railwayMap: Record<string, string> = {
   "keihin-tohoku": "odpt.Railway:JR-East.KeihinTohokuNegishi",
   keiyo: "odpt.Railway:JR-East.Keiyo",
   yokosuka: "odpt.Railway:JR-East.Yokosuka",
+  sobu: "odpt.Railway:JR-East.Sobu",
 };
 
 type OdptStationTimetableObject = {
@@ -149,10 +150,25 @@ export const jrEastProvider: RailwayProvider = {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `JR East timetable request failed: ${response.status} ${response.statusText}`,
-      );
-    }
+  const errorBody = await response.text();
+
+  console.error(
+    "[JR East Provider] timetable request failed",
+    {
+      status: response.status,
+      statusText: response.statusText,
+      railway,
+      station,
+      railDirection,
+      calendar,
+      errorBody,
+    },
+  );
+
+  throw new Error(
+    `JR East timetable request failed: ${response.status} ${response.statusText} - ${errorBody}`,
+  );
+}
 
     const data =
       (await response.json()) as OdptStationTimetable[];
