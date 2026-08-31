@@ -1,5 +1,6 @@
 import type { RailwayTimetable } from "@/types/railway";
 import { seibuStationNames } from "./seibuStationNames";
+import { seibuTrainTypes } from "./seibuTrainTypes";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api-challenge.odpt.org/api/v4";
@@ -137,6 +138,10 @@ export const seibuProvider: RailwayProvider = {
 
           const trainType = getLastSegment(item["odpt:trainType"]);
 
+          const trainTypeName = trainType
+            ? seibuTrainTypes[trainType]
+            : undefined;
+
           const destinationStationFull =
             item["odpt:destinationStation"]?.[0];
 
@@ -157,6 +162,8 @@ export const seibuProvider: RailwayProvider = {
               directionId,
               departureTime,
               trainType,
+              trainTypeKo: trainTypeName?.ko,
+              trainTypeJa: trainTypeName?.ja,
               destinationStation,
               destinationKo: destinationName?.ko,
               destinationJa: destinationName?.ja,

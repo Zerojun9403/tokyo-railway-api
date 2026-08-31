@@ -15,19 +15,16 @@ export type RailwayTrain = {
   lineId: string;
   stationId: string;
   directionId: string;
-
   departureTime?: string;
   minutesUntilDeparture?: number;
-
   fromStation?: string;
   toStation?: string;
-
   trainType?: string;
+  trainTypeKo?: string;
+  trainTypeJa?: string;
   trainNumber?: string;
-
   destinationKo?: string;
   destinationJa?: string;
-
   status: TrainStatus;
 };
 
@@ -46,11 +43,10 @@ export type RailwayTimetable = {
   lineId: string;
   stationId: string;
   directionId: string;
-
   departureTime: string;
-
   trainType?: string;
-
+  trainTypeKo?: string;
+  trainTypeJa?: string;
   destinationStation?: string;
   destinationKo?: string;
   destinationJa?: string;
