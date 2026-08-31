@@ -105,4 +105,10 @@ export const tokyuStationNames: Record<string, TokyuStationName> = {
   ko: "에비나",
   ja: "海老名",
 },
+
+// Tokyu Setagaya Line
+ShimoTakaido: {
+  ko: "시모타카이도",
+  ja: "下高井戸",
+},
 };
