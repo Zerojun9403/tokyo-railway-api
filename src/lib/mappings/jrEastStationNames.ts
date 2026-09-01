@@ -48,6 +48,11 @@ export const jrEastStationNames: Record<
     ko: "오쓰키",
     ja: "大月",
   },
+   
+  Tachikawa: {
+  ko: "다치카와",
+  ja: "立川",
+ },
 
   Ome: {
     ko: "오메",

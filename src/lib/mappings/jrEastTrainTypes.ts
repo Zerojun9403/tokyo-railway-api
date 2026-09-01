@@ -16,4 +16,14 @@ export const jrEastTrainTypes: Record<
     ko: "중앙특쾌",
     ja: "中央特快",
   },
+
+  OmeSpecialRapid: {
+    ko: "오메특쾌",
+    ja: "青梅特快",
+  },
+  
+  Tachikawa: {
+  ko: "다치카와",
+  ja: "立川",
+},
 };
