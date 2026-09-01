@@ -90,7 +90,7 @@ type DestinationName = {
   ja: string;
 };
 
-const KEIKYU_DESTINATION_MAP: Record<string, DestinationName> = {
+export const KEIKYU_DESTINATION_MAP: Record<string, DestinationName> = {
   /*
    * Keikyu
    */
