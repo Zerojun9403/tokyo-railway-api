@@ -1,4 +1,6 @@
 import type { RailwayTimetable } from "@/types/railway";
+import { jrEastStationNames } from "@/lib/mappings/jrEastStationNames";
+import { jrEastTrainTypes } from "@/lib/mappings/jrEastTrainTypes";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL =
@@ -208,18 +210,30 @@ export const jrEastProvider: RailwayProvider = {
                   ]?.[0],
                 );
 
-              return [
-                {
-                  id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
-                  operator: "jr-east",
-                  lineId,
-                  stationId,
-                  directionId,
-                  departureTime,
-                  trainType,
-                  destinationStation,
-                },
-              ];
+                const trainTypeName = trainType
+                  ? jrEastTrainTypes[trainType]
+                  : undefined;
+
+                const destinationName = destinationStation
+                  ? jrEastStationNames[destinationStation]
+                  : undefined;
+
+             return [
+                  {
+                    id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
+                    operator: "jr-east",
+                    lineId,
+                    stationId,
+                    directionId,
+                    departureTime,
+                    trainType,
+                    trainTypeKo: trainTypeName?.ko,
+                    trainTypeJa: trainTypeName?.ja,
+                    destinationStation,
+                    destinationKo: destinationName?.ko,
+                    destinationJa: destinationName?.ja,
+                  },
+                ];
             },
           );
         },
