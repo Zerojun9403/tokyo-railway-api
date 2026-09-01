@@ -17,6 +17,7 @@ const railwayMap: Record<string, string> = {
   keiyo: "odpt.Railway:JR-East.Keiyo",
   yokosuka: "odpt.Railway:JR-East.Yokosuka",
   sobu: "odpt.Railway:JR-East.Sobu",
+  "sobu-rapid": "odpt.Railway:JR-East.SobuRapid",
   narita: "odpt.Railway:JR-East.Narita",
   "narita-airport": "odpt.Railway:JR-East.NaritaAirportBranch",
   
