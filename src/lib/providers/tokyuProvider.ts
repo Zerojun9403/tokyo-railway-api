@@ -61,11 +61,7 @@ const getCalendar = (): "Weekday" | "SaturdayHoliday" => {
 export const tokyuProvider: RailwayProvider = {
   operator: "tokyu",
 
-  getTrains: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTrains: async ({ lineId, stationId, directionId }) => {
     console.log("[Tokyu Provider] getTrains", {
       lineId,
       stationId,
@@ -75,11 +71,7 @@ export const tokyuProvider: RailwayProvider = {
     return [];
   },
 
-  getTimetable: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTimetable: async ({ lineId, stationId, directionId }) => {
     const apiKey = process.env.ODPT_API_KEY;
 
     if (!apiKey) {
@@ -102,22 +94,14 @@ export const tokyuProvider: RailwayProvider = {
     const railDirection = `odpt.RailDirection:${directionId}`;
     const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:StationTimetable`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Tokyu",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
 
     url.searchParams.set("odpt:railway", railway);
     url.searchParams.set("odpt:station", station);
 
-    url.searchParams.set(
-      "odpt:railDirection",
-      railDirection,
-    );
+    url.searchParams.set("odpt:railDirection", railDirection);
 
     url.searchParams.set("odpt:calendar", calendar);
     url.searchParams.set("acl:consumerKey", apiKey);
@@ -130,13 +114,11 @@ export const tokyuProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const data = (await response.json()) as OdptStationTimetable[];
 
     const timetable: RailwayTimetable[] = data.flatMap(
       (stationTimetable, timetableIndex) => {
-        const objects =
-          stationTimetable["odpt:stationTimetableObject"] ?? [];
+        const objects = stationTimetable["odpt:stationTimetableObject"] ?? [];
 
         return objects.flatMap((item, itemIndex) => {
           const departureTime = item["odpt:departureTime"];
@@ -145,20 +127,15 @@ export const tokyuProvider: RailwayProvider = {
             return [];
           }
 
-          const trainType = getLastSegment(
-            item["odpt:trainType"],
-          );
+          const trainType = getLastSegment(item["odpt:trainType"]);
 
           const trainTypeName = trainType
             ? tokyuTrainTypes[trainType]
             : undefined;
 
-          const destinationStationFull =
-            item["odpt:destinationStation"]?.[0];
+          const destinationStationFull = item["odpt:destinationStation"]?.[0];
 
-          const destinationStation = getLastSegment(
-            destinationStationFull,
-          );
+          const destinationStation = getLastSegment(destinationStationFull);
 
           const destinationName = destinationStation
             ? tokyuStationNames[destinationStation]
