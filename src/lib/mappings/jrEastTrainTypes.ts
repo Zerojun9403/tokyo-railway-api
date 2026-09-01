@@ -21,9 +21,12 @@ export const jrEastTrainTypes: Record<
     ko: "오메특쾌",
     ja: "青梅特快",
   },
-  
-  Tachikawa: {
-  ko: "다치카와",
-  ja: "立川",
+
+  Local: {
+  ko: "보통",
+  ja: "各駅停車",
 },
+
+
+ 
 };
