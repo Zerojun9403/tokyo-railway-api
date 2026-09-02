@@ -180,6 +180,21 @@ export const KEIKYU_DESTINATION_MAP: Record<string, DestinationName> = {
     ko: "하네다공항 제3터미널",
     ja: "羽田空港第3ターミナル",
   },
+  Aoto: { ko: "아오토", ja: "青砥" },
+  Horinouchi: { ko: "호리노우치", ja: "堀ノ内" },
+  InzaiMakinohara: { ko: "인자이마키노하라", ja: "印西牧の原" },
+  Kamiooka: { ko: "가미오오카", ja: "上大岡" },
+  KanazawaBunko: { ko: "가나자와분코", ja: "金沢文庫" },
+  KanazawaHakkei: { ko: "가나자와핫케이", ja: "金沢八景" },
+  KeikyuKawasaki: { ko: "게이큐카와사키", ja: "京急川崎" },
+  KeiseiSakura: { ko: "게이세이사쿠라", ja: "京成佐倉" },
+  Kojimashinden: { ko: "고지마신덴", ja: "小島新田" },
+  Misakiguchi: { ko: "미사키구치", ja: "三崎口" },
+  Miurakaigan: { ko: "미우라카이간", ja: "三浦海岸" },
+  Oshiage: { ko: "오시아게", ja: "押上" },
+  ShibayamaChiyoda: { ko: "시바야마치요다", ja: "芝山千代田" },
+  Sogosando: { ko: "소고산도", ja: "宗吾参道" },
+  Uraga: { ko: "우라가", ja: "浦賀" },
 };
 
 /*

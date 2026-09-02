@@ -96,4 +96,13 @@ export const seibuStationNames: Record<string, SeibuStationName> = {
   Toshimaen: { ko: "도시마엔", ja: "豊島園" },
   Yasaka: { ko: "야사카", ja: "八坂" },
   Yokoze: { ko: "요코제", ja: "横瀬" },
+  Kikuna: { ko: "기쿠나", ja: "菊名" },
+  Mitsumineguchi: { ko: "미쓰미네구치", ja: "三峰口" },
+  MotomachiChukagai: { ko: "모토마치·주카가이", ja: "元町・中華街" },
+  Motosumiyoshi: { ko: "모토스미요시", ja: "元住吉" },
+  MusashiKosugi: { ko: "무사시코스기", ja: "武蔵小杉" },
+  Nagatoro: { ko: "나가토로", ja: "長瀞" },
+  ShinKiba: { ko: "신키바", ja: "新木場" },
+  Toyosu: { ko: "도요스", ja: "豊洲" },
+  Yokohama: { ko: "요코하마", ja: "横浜" },
 };
