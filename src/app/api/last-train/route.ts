@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { normalizeLastTrainRequest } from "@/lib/lastTrain/normalizeLastTrainRequest";
 import { getProvider } from "@/lib/providers/providerRegistry";
 import type { RailwayOperator, RailwayTimetable } from "@/types/railway";
 
@@ -99,14 +100,6 @@ const findLastTrain = (
  * lineId
  * stationId
  * directionId
- *
- * Example:
- *
- * /api/last-train
- * ?operator=jr-east
- * &lineId=...
- * &stationId=...
- * &directionId=...
  */
 
 export async function GET(request: NextRequest) {
@@ -169,6 +162,24 @@ export async function GET(request: NextRequest) {
   try {
     /*
      * =====================================================
+     * Normalize GUIDE Request
+     * =====================================================
+     *
+     * GUIDE에서 사용하는 lineId / directionId를
+     * Provider가 이해하는 값으로 변환한다.
+     *
+     * 응답에는 GUIDE가 요청한 원본 값을 유지한다.
+     */
+
+    const normalized = normalizeLastTrainRequest({
+      operator,
+      lineId,
+      stationId,
+      directionId,
+    });
+
+    /*
+     * =====================================================
      * Provider
      * =====================================================
      */
@@ -204,10 +215,10 @@ export async function GET(request: NextRequest) {
      */
 
     const timetable = await provider.getTimetable({
-      operator,
-      lineId,
-      stationId,
-      directionId,
+      operator: normalized.operator,
+      lineId: normalized.lineId,
+      stationId: normalized.stationId,
+      directionId: normalized.directionId,
     });
 
     /*
@@ -225,9 +236,12 @@ export async function GET(request: NextRequest) {
           lineId,
           stationId,
           directionId,
+
           supported: true,
           found: false,
+
           updatedAt: new Date().toISOString(),
+
           lastTrain: null,
         },
         {
@@ -240,6 +254,9 @@ export async function GET(request: NextRequest) {
      * =====================================================
      * Response
      * =====================================================
+     *
+     * Provider 내부 ID가 아니라
+     * GUIDE가 요청한 원래 ID를 반환한다.
      */
 
     return NextResponse.json({
