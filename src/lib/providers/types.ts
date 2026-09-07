@@ -2,6 +2,7 @@ import type {
   RailwayOperator,
   RailwayTrain,
   RailwayTimetable,
+  RailwayTrainInformation,
 } from "@/types/railway";
 
 export type GetTrainsParams = {
@@ -18,10 +19,23 @@ export type GetTimetableParams = {
   directionId: string;
 };
 
+export type GetTrainInformationParams = {
+  operator: RailwayOperator;
+  lineId: string;
+};
+
 export interface RailwayProvider {
   operator: RailwayOperator;
 
-  getTrains: (params: GetTrainsParams) => Promise<RailwayTrain[]>;
+  getTrains: (
+    params: GetTrainsParams,
+  ) => Promise<RailwayTrain[]>;
 
-  getTimetable?: (params: GetTimetableParams) => Promise<RailwayTimetable[]>;
+  getTimetable?: (
+    params: GetTimetableParams,
+  ) => Promise<RailwayTimetable[]>;
+
+  getTrainInformation?: (
+    params: GetTrainInformationParams,
+  ) => Promise<RailwayTrainInformation[]>;
 }

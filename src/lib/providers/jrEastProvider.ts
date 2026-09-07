@@ -1,4 +1,8 @@
-import type { RailwayTimetable } from "@/types/railway";
+import type {
+  RailwayTimetable,
+  RailwayTrainInformation,
+  TrainInformationStatus,
+} from "@/types/railway";
 import { jrEastStationNames } from "@/lib/mappings/jrEastStationNames";
 import { jrEastTrainTypes } from "@/lib/mappings/jrEastTrainTypes";
 import type { RailwayProvider } from "./types";
@@ -20,7 +24,6 @@ const railwayMap: Record<string, string> = {
   "sobu-rapid": "odpt.Railway:JR-East.SobuRapid",
   narita: "odpt.Railway:JR-East.Narita",
   "narita-airport": "odpt.Railway:JR-East.NaritaAirportBranch",
-  
 };
 
 type OdptStationTimetableObject = {
@@ -37,6 +40,19 @@ type OdptStationTimetable = {
   "odpt:calendar"?: string;
   "odpt:railDirection"?: string;
   "odpt:stationTimetableObject"?: OdptStationTimetableObject[];
+};
+
+type OdptTrainInformation = {
+  "@id"?: string;
+  "owl:sameAs"?: string;
+  "dc:date"?: string;
+  "dct:valid"?: string;
+  "odpt:operator"?: string;
+  "odpt:railway"?: string;
+  "odpt:trainInformationStatus"?: string;
+  "odpt:trainInformationText"?: string;
+  "odpt:trainInformationCause"?: string;
+  "odpt:trainInformationRange"?: string;
 };
 
 const getLastSegment = (
@@ -63,6 +79,102 @@ const getCalendar = (): "Weekday" | "SaturdayHoliday" => {
   }
 
   return "Weekday";
+};
+
+const normalizeTrainInformationStatus = (
+  rawStatus?: string,
+  message?: string,
+): TrainInformationStatus => {
+  const status = rawStatus ?? "";
+  const text = message ?? "";
+  const combined = `${status} ${text}`;
+
+  if (
+    combined.includes("運転見合わせ") ||
+    combined.includes("運転を見合わせ")
+  ) {
+    return "suspended";
+  }
+
+  if (
+    combined.includes("一部運休") ||
+    combined.includes("一部列車運休")
+  ) {
+    return "partial-suspension";
+  }
+
+  if (
+    combined.includes("直通運転中止") ||
+    combined.includes("直通運転を中止")
+  ) {
+    return "through-service-suspended";
+  }
+
+  if (
+    combined.includes("運転再開見込") ||
+    combined.includes("運転再開見込み")
+  ) {
+    return "resuming";
+  }
+
+  if (
+    combined.includes("遅延") ||
+    combined.includes("遅れ")
+  ) {
+    return "delay";
+  }
+
+  if (
+    combined.includes("平常どおり") ||
+    combined.includes("平常通り") ||
+    combined.includes("通常どおり") ||
+    combined.includes("通常通り")
+  ) {
+    return "normal";
+  }
+
+  if (
+    status.includes("お知らせ") ||
+    status.includes("情報")
+  ) {
+    return "information";
+  }
+
+  if (status || text) {
+    return "information";
+  }
+
+  return "unknown";
+};
+
+const getTrainInformationTitle = (
+  status: TrainInformationStatus,
+): string => {
+  switch (status) {
+    case "normal":
+      return "정상 운행";
+
+    case "delay":
+      return "지연";
+
+    case "suspended":
+      return "운행 중지";
+
+    case "partial-suspension":
+      return "일부 운휴";
+
+    case "through-service-suspended":
+      return "직통 운행 중지";
+
+    case "resuming":
+      return "운행 재개 예정";
+
+    case "information":
+      return "운행 안내";
+
+    default:
+      return "운행정보";
+  }
 };
 
 export const jrEastProvider: RailwayProvider = {
@@ -156,25 +268,25 @@ export const jrEastProvider: RailwayProvider = {
     });
 
     if (!response.ok) {
-  const errorBody = await response.text();
+      const errorBody = await response.text();
 
-  console.error(
-    "[JR East Provider] timetable request failed",
-    {
-      status: response.status,
-      statusText: response.statusText,
-      railway,
-      station,
-      railDirection,
-      calendar,
-      errorBody,
-    },
-  );
+      console.error(
+        "[JR East Provider] timetable request failed",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          railway,
+          station,
+          railDirection,
+          calendar,
+          errorBody,
+        },
+      );
 
-  throw new Error(
-    `JR East timetable request failed: ${response.status} ${response.statusText} - ${errorBody}`,
-  );
-}
+      throw new Error(
+        `JR East timetable request failed: ${response.status} ${response.statusText} - ${errorBody}`,
+      );
+    }
 
     const data =
       (await response.json()) as OdptStationTimetable[];
@@ -211,35 +323,136 @@ export const jrEastProvider: RailwayProvider = {
                   ]?.[0],
                 );
 
-                const trainTypeName = trainType
-                  ? jrEastTrainTypes[trainType]
-                  : undefined;
+              const trainTypeName = trainType
+                ? jrEastTrainTypes[trainType]
+                : undefined;
 
-                const destinationName = destinationStation
-                  ? jrEastStationNames[destinationStation]
-                  : undefined;
+              const destinationName = destinationStation
+                ? jrEastStationNames[destinationStation]
+                : undefined;
 
-             return [
-                  {
-                    id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
-                    operator: "jr-east",
-                    lineId,
-                    stationId,
-                    directionId,
-                    departureTime,
-                    trainType,
-                    trainTypeKo: trainTypeName?.ko,
-                    trainTypeJa: trainTypeName?.ja,
-                    destinationStation,
-                    destinationKo: destinationName?.ko,
-                    destinationJa: destinationName?.ja,
-                  },
-                ];
+              return [
+                {
+                  id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
+                  operator: "jr-east",
+                  lineId,
+                  stationId,
+                  directionId,
+                  departureTime,
+                  trainType,
+                  trainTypeKo: trainTypeName?.ko,
+                  trainTypeJa: trainTypeName?.ja,
+                  destinationStation,
+                  destinationKo: destinationName?.ko,
+                  destinationJa: destinationName?.ja,
+                },
+              ];
             },
           );
         },
       );
 
     return timetable;
+  },
+
+  getTrainInformation: async ({
+    lineId,
+  }) => {
+    const apiKey = process.env.ODPT_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "ODPT_API_KEY is not configured.",
+      );
+    }
+
+    const railway = railwayMap[lineId];
+
+    if (!railway) {
+      throw new Error(
+        `Unsupported JR East lineId: ${lineId}`,
+      );
+    }
+
+    const url = new URL(
+      `${ODPT_API_BASE_URL}/odpt:TrainInformation`,
+    );
+
+    url.searchParams.set(
+      "odpt:operator",
+      "odpt.Operator:JR-East",
+    );
+
+    url.searchParams.set(
+      "odpt:railway",
+      railway,
+    );
+
+    url.searchParams.set(
+      "acl:consumerKey",
+      apiKey,
+    );
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+
+      console.error(
+        "[JR East Provider] train information request failed",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          railway,
+          errorBody,
+        },
+      );
+
+      throw new Error(
+        `JR East train information request failed: ${response.status} ${response.statusText} - ${errorBody}`,
+      );
+    }
+
+    const data =
+      (await response.json()) as OdptTrainInformation[];
+
+    const information: RailwayTrainInformation[] =
+      data.map((item, index) => {
+        const rawStatus =
+          item["odpt:trainInformationStatus"];
+
+        const message =
+          item["odpt:trainInformationText"] ?? "";
+
+        const status =
+          normalizeTrainInformationStatus(
+            rawStatus,
+            message,
+          );
+
+        return {
+          id:
+            item["owl:sameAs"] ??
+            item["@id"] ??
+            `jr-east-${lineId}-train-information-${index}`,
+          operator: "jr-east",
+          lineId,
+          status,
+          title: getTrainInformationTitle(status),
+          message,
+          cause:
+            item["odpt:trainInformationCause"],
+          affectedSection:
+            item["odpt:trainInformationRange"],
+          rawStatus,
+          updatedAt:
+            item["dc:date"] ??
+            item["dct:valid"],
+        };
+      });
+
+    return information;
   },
 };

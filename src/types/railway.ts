@@ -1,4 +1,4 @@
-export type RailwayOperator =
+﻿export type RailwayOperator =
   | "tokyo-metro"
   | "toei"
   | "jr-east"
@@ -59,4 +59,33 @@ export type TimetableResponse = {
   directionId: string;
   updatedAt: string;
   timetable: RailwayTimetable[];
+};
+export type TrainInformationStatus =
+  | "normal"
+  | "delay"
+  | "suspended"
+  | "partial-suspension"
+  | "through-service-suspended"
+  | "resuming"
+  | "information"
+  | "unknown";
+
+export type RailwayTrainInformation = {
+  id: string;
+  operator: RailwayOperator;
+  lineId: string;
+  status: TrainInformationStatus;
+  title: string;
+  message: string;
+  cause?: string;
+  affectedSection?: string;
+  rawStatus?: string;
+  updatedAt?: string;
+};
+
+export type TrainInformationResponse = {
+  operator: RailwayOperator;
+  lineId: string;
+  updatedAt: string;
+  information: RailwayTrainInformation[];
 };
