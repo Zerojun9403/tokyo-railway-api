@@ -15,6 +15,7 @@ const RAILWAY_OPERATORS: RailwayOperator[] = [
 ];
 
 const LAST_TRAIN_SUPPORTED_OPERATORS: RailwayOperator[] = [
+  "tokyo-metro",
   "jr-east",
   "keikyu",
   "seibu",
