@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   getKeiseiAirportTimetable,
+  isKeiseiAirportStation,
+  isServiceSupportedAtStation,
   type KeiseiAirportDayType,
 } from "@/lib/providers/keiseiAirportProvider";
 
@@ -9,10 +11,15 @@ export const dynamic = "force-dynamic";
 
 const VALID_DAY_TYPES = new Set<KeiseiAirportDayType>(["weekday", "weekend"]);
 
+const DEFAULT_STATION = "narita-airport-terminal-1";
+
 export async function GET(request: NextRequest) {
   try {
     const dayTypeParam =
       request.nextUrl.searchParams.get("dayType") ?? "weekday";
+
+    const stationParam =
+      request.nextUrl.searchParams.get("station") ?? DEFAULT_STATION;
 
     if (!VALID_DAY_TYPES.has(dayTypeParam as KeiseiAirportDayType)) {
       return NextResponse.json(
@@ -24,9 +31,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (!isKeiseiAirportStation(stationParam)) {
+      return NextResponse.json(
+        {
+          error: "Invalid station",
+          message: "Unsupported Keisei airport timetable station.",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (!isServiceSupportedAtStation(stationParam, "skyliner")) {
+      return NextResponse.json(
+        {
+          supported: false,
+          found: false,
+          error: "Skyliner is not supported at this station.",
+        },
+        { status: 400 },
+      );
+    }
+
     const result = await getKeiseiAirportTimetable(
       "skyliner",
       dayTypeParam as KeiseiAirportDayType,
+      stationParam,
     );
 
     return NextResponse.json(
