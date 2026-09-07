@@ -19,6 +19,7 @@ const TRAIN_INFORMATION_SUPPORTED_OPERATORS: RailwayOperator[] = [
    "toei",
    "tokyu",
    "seibu",
+   "keikyu",
 ];
 
 /*

@@ -1,5 +1,10 @@
 import type { RailwayProvider } from "./types";
-import type { RailwayTimetable, RailwayTrain } from "../../types/railway";
+import type {
+  RailwayTimetable,
+  RailwayTrain,
+  RailwayTrainInformation,
+  TrainInformationStatus,
+} from "../../types/railway";
 
 type KeikyuTrainRaw = {
   "@id": string;
@@ -251,6 +256,130 @@ const getApiKey = (): string => {
  * =========================================================
  */
 
+
+type KeikyuMultilingualText = {
+  ja?: string;
+  en?: string;
+};
+
+type KeikyuTrainInformationRaw = {
+  "@id"?: string;
+  "@type"?: "odpt:TrainInformation";
+  "dc:date"?: string;
+  "dct:valid"?: string;
+  "owl:sameAs"?: string;
+  "odpt:operator"?: string;
+  "odpt:railway"?: string;
+  "odpt:timeOfOrigin"?: string;
+  "odpt:trainInformationText"?: string | KeikyuMultilingualText;
+  "odpt:trainInformationCause"?: string | KeikyuMultilingualText;
+  "odpt:trainInformationStatus"?: string | KeikyuMultilingualText;
+  "odpt:trainInformationRange"?: string | KeikyuMultilingualText;
+};
+
+const getKeikyuInformationText = (
+  value?: string | KeikyuMultilingualText,
+): string => {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.ja ?? value.en ?? "";
+};
+
+const normalizeKeikyuTrainInformationStatus = (
+  rawStatus: string,
+  message: string,
+): TrainInformationStatus => {
+  const combined = `${rawStatus} ${message}`;
+
+  // Severe states must be checked before generic delay/information wording.
+  if (
+    combined.includes("運転見合わせ") ||
+    combined.includes("運転を見合わせ") ||
+    combined.includes("全線運休") ||
+    combined.includes("全線運転見合わせ")
+  ) {
+    return "suspended";
+  }
+
+  if (
+    combined.includes("一部運休") ||
+    combined.includes("一部列車運休") ||
+    combined.includes("一部区間運休")
+  ) {
+    return "partial-suspension";
+  }
+
+  if (
+    combined.includes("直通運転中止") ||
+    combined.includes("直通運転を中止")
+  ) {
+    return "through-service-suspended";
+  }
+
+  if (
+    combined.includes("運転再開見込") ||
+    combined.includes("運転再開見込み")
+  ) {
+    return "resuming";
+  }
+
+  if (
+    combined.includes("ダイヤ乱れ") ||
+    combined.includes("ダイヤが乱れ") ||
+    combined.includes("遅延") ||
+    combined.includes("遅れ")
+  ) {
+    return "delay";
+  }
+
+  if (
+    combined.includes("遅延はありません") ||
+    combined.includes("遅れはありません") ||
+    combined.includes("平常どおり") ||
+    combined.includes("平常通り") ||
+    combined.includes("通常どおり") ||
+    combined.includes("通常通り") ||
+    combined.includes("平常運転")
+  ) {
+    return "normal";
+  }
+
+  if (rawStatus || message) {
+    return "information";
+  }
+
+  return "unknown";
+};
+
+const getKeikyuTrainInformationTitle = (
+  status: TrainInformationStatus,
+): string => {
+  switch (status) {
+    case "normal":
+      return "정상 운행";
+    case "delay":
+      return "지연";
+    case "suspended":
+      return "운행 중지";
+    case "partial-suspension":
+      return "일부 운휴";
+    case "through-service-suspended":
+      return "직통 운행 중지";
+    case "resuming":
+      return "운행 재개 예정";
+    case "information":
+      return "운행 안내";
+    default:
+      return "운행정보";
+  }
+};
+
 export const keikyuProvider: RailwayProvider = {
   operator: "keikyu",
 
@@ -439,4 +568,86 @@ export const keikyuProvider: RailwayProvider = {
 
     return timetable;
   },
+
+  /*
+   * =======================================================
+   * Train Information
+   * =======================================================
+   *
+   * Keikyu currently returns one operator-wide
+   * TrainInformation record rather than one record per line.
+   * Validate the requested lineId, then attach the original
+   * operator-wide information to that requested line.
+   */
+
+  getTrainInformation: async ({
+    lineId,
+  }): Promise<RailwayTrainInformation[]> => {
+    const apiKey = getApiKey();
+
+    if (!KEIKYU_RAILWAY_MAP[lineId]) {
+      throw new Error(`Unsupported Keikyu line: ${lineId}`);
+    }
+
+    const url = new URL(
+      "https://api-challenge.odpt.org/api/v4/odpt:TrainInformation",
+    );
+
+    url.searchParams.set("odpt:operator", "odpt.Operator:Keikyu");
+    url.searchParams.set("acl:consumerKey", apiKey);
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+
+      throw new Error(
+        `Keikyu TrainInformation API request failed: ${response.status} ${body}`,
+      );
+    }
+
+    const data = (await response.json()) as KeikyuTrainInformationRaw[];
+
+    return data.map((item, index) => {
+      const message = getKeikyuInformationText(
+        item["odpt:trainInformationText"],
+      );
+
+      const rawStatus = getKeikyuInformationText(
+        item["odpt:trainInformationStatus"],
+      );
+
+      const cause = getKeikyuInformationText(
+        item["odpt:trainInformationCause"],
+      );
+
+      const affectedSection = getKeikyuInformationText(
+        item["odpt:trainInformationRange"],
+      );
+
+      const status = normalizeKeikyuTrainInformationStatus(
+        rawStatus,
+        message,
+      );
+
+      return {
+        id:
+          item["owl:sameAs"] ??
+          item["@id"] ??
+          `keikyu-${lineId}-train-information-${index}`,
+        operator: "keikyu",
+        lineId,
+        status,
+        title: getKeikyuTrainInformationTitle(status),
+        message,
+        cause: cause || undefined,
+        affectedSection: affectedSection || undefined,
+        rawStatus: rawStatus || undefined,
+        updatedAt: item["dc:date"] ?? item["dct:valid"],
+      };
+    });
+  },
+
 };
