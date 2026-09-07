@@ -16,6 +16,24 @@ export type OdptDestinationName = {
  * 직통운전 때문에 타사 역도 포함한다.
  */
 export const odptDestinationNames: Record<string, OdptDestinationName> = {
+  Asakusa: { ko: "아사쿠사" },
+  Ogikubo: { ko: "오기쿠보" },
+  NakaMeguro: { ko: "나카메구로" },
+  KitaSenju: { ko: "기타센주" },
+  Nakano: { ko: "나카노" },
+  NishiFunabashi: { ko: "니시후나바시" },
+  YoyogiUehara: { ko: "요요기우에하라" },
+  KitaAyase: { ko: "기타아야세" },
+  Ayase: { ko: "아야세" },
+  Myogadani: { ko: "묘가다니" },
+  NakanoSakaue: { ko: "나카노사카우에" },
+  Honancho: { ko: "호난초" },
+  Ueno: { ko: "우에노" },
+  TameikeSanno: { ko: "다메이케산노" },
+  Toyocho: { ko: "도요초" },
+  Myoden: { ko: "묘덴" },
+  Urayasu: { ko: "우라야스" },
+  Kasai: { ko: "가사이" },
   // Hokuso
   ImbaNihonIdai: { ko: "인바니혼이다이" },
   InzaiMakinohara: { ko: "인자이마키노하라" },

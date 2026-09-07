@@ -4,6 +4,7 @@ import type {
   TrainInformationStatus,
 } from "@/types/railway";
 import type { RailwayProvider } from "./types";
+import { getOdptDestinationNameKo } from "./odptDestinationNames";
 
 const ODPT_API_BASE_URL = "https://api.odpt.org/api/v4";
 
@@ -382,16 +383,11 @@ const getCalendar = (): "Weekday" | "SaturdayHoliday" => {
   return "Weekday";
 };
 
-const getStationName = (
-  lineId: string,
-  stationId: string,
-): string => {
+const getStationName = (lineId: string, stationId: string): string => {
   const stationMap = stationMaps[lineId];
 
   if (!stationMap) {
-    throw new Error(
-      `Unsupported Tokyo Metro lineId: ${lineId}`,
-    );
+    throw new Error(`Unsupported Tokyo Metro lineId: ${lineId}`);
   }
 
   const stationName = stationMap[stationId];
@@ -405,16 +401,11 @@ const getStationName = (
   return stationName;
 };
 
-const getRailDirection = (
-  lineId: string,
-  directionId: string,
-): string => {
+const getRailDirection = (lineId: string, directionId: string): string => {
   const directionMap = directionMaps[lineId];
 
   if (!directionMap) {
-    throw new Error(
-      `Unsupported Tokyo Metro lineId: ${lineId}`,
-    );
+    throw new Error(`Unsupported Tokyo Metro lineId: ${lineId}`);
   }
 
   const direction = directionMap[directionId];
@@ -480,9 +471,7 @@ const normalizeTrainInformationStatus = (
   return "unknown";
 };
 
-const getTrainInformationTitle = (
-  status: TrainInformationStatus,
-): string => {
+const getTrainInformationTitle = (status: TrainInformationStatus): string => {
   switch (status) {
     case "normal":
       return "정상 운행";
@@ -519,11 +508,7 @@ export const tokyoMetroProvider: RailwayProvider = {
    * 따라서 여기의 getTrains는 기존대로 유지한다.
    */
 
-  getTrains: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTrains: async ({ lineId, stationId, directionId }) => {
     console.log("[Tokyo Metro Provider] getTrains", {
       lineId,
       stationId,
@@ -576,11 +561,8 @@ export const tokyoMetroProvider: RailwayProvider = {
     const data = (await response.json()) as OdptTrainInformation[];
 
     const information: RailwayTrainInformation[] = data.map((item, index) => {
-      const message =
-        getJapaneseText(item["odpt:trainInformationText"]) ?? "";
-      const rawStatus = getJapaneseText(
-        item["odpt:trainInformationStatus"],
-      );
+      const message = getJapaneseText(item["odpt:trainInformationText"]) ?? "";
+      const rawStatus = getJapaneseText(item["odpt:trainInformationStatus"]);
       const cause = getJapaneseText(item["odpt:trainInformationCause"]);
       const affectedSection = getJapaneseText(
         item["odpt:trainInformationRange"],
@@ -619,36 +601,22 @@ export const tokyoMetroProvider: RailwayProvider = {
    * =======================================================
    */
 
-  getTimetable: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTimetable: async ({ lineId, stationId, directionId }) => {
     const apiKey = process.env.TOKYO_METRO_API_KEY;
 
     if (!apiKey) {
-      throw new Error(
-        "TOKYO_METRO_API_KEY is not configured.",
-      );
+      throw new Error("TOKYO_METRO_API_KEY is not configured.");
     }
 
     const railway = railwayMap[lineId];
 
     if (!railway) {
-      throw new Error(
-        `Unsupported Tokyo Metro lineId: ${lineId}`,
-      );
+      throw new Error(`Unsupported Tokyo Metro lineId: ${lineId}`);
     }
 
-    const stationName = getStationName(
-      lineId,
-      stationId,
-    );
+    const stationName = getStationName(lineId, stationId);
 
-    const direction = getRailDirection(
-      lineId,
-      directionId,
-    );
+    const direction = getRailDirection(lineId, directionId);
 
     /*
      * odpt.Railway:TokyoMetro.Ginza
@@ -659,9 +627,7 @@ export const tokyoMetroProvider: RailwayProvider = {
     const railwayName = getLastSegment(railway);
 
     if (!railwayName) {
-      throw new Error(
-        `Invalid Tokyo Metro railway: ${railway}`,
-      );
+      throw new Error(`Invalid Tokyo Metro railway: ${railway}`);
     }
 
     /*
@@ -677,60 +643,34 @@ export const tokyoMetroProvider: RailwayProvider = {
      * odpt.Station:TokyoMetro.Chiyoda.Akasaka
      */
 
-    const station =
-      `odpt.Station:TokyoMetro.${railwayName}.${stationName}`;
+    const station = `odpt.Station:TokyoMetro.${railwayName}.${stationName}`;
 
-    const railDirection =
-      `odpt.RailDirection:${direction}`;
+    const railDirection = `odpt.RailDirection:${direction}`;
 
-    const calendar =
-      `odpt.Calendar:${getCalendar()}`;
+    const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:StationTimetable`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:TokyoMetro",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:TokyoMetro");
 
-    url.searchParams.set(
-      "odpt:railway",
-      railway,
-    );
+    url.searchParams.set("odpt:railway", railway);
 
-    url.searchParams.set(
-      "odpt:station",
+    url.searchParams.set("odpt:station", station);
+
+    url.searchParams.set("odpt:railDirection", railDirection);
+
+    url.searchParams.set("odpt:calendar", calendar);
+
+    url.searchParams.set("acl:consumerKey", apiKey);
+
+    console.log("[Tokyo Metro Provider] StationTimetable request", {
+      lineId,
+      stationId,
       station,
-    );
-
-    url.searchParams.set(
-      "odpt:railDirection",
+      directionId,
       railDirection,
-    );
-
-    url.searchParams.set(
-      "odpt:calendar",
       calendar,
-    );
-
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
-
-    console.log(
-      "[Tokyo Metro Provider] StationTimetable request",
-      {
-        lineId,
-        stationId,
-        station,
-        directionId,
-        railDirection,
-        calendar,
-      },
-    );
+    });
 
     const response = await fetch(url);
 
@@ -740,87 +680,63 @@ export const tokyoMetroProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const data = (await response.json()) as OdptStationTimetable[];
 
-    const timetable: RailwayTimetable[] =
-      data.flatMap(
-        (
-          stationTimetable,
-          timetableIndex,
-        ) => {
-          const objects =
-            stationTimetable[
-              "odpt:stationTimetableObject"
-            ] ?? [];
+    const timetable: RailwayTimetable[] = data.flatMap(
+      (stationTimetable, timetableIndex) => {
+        const objects = stationTimetable["odpt:stationTimetableObject"] ?? [];
 
-          return objects.flatMap(
-            (
-              item,
-              itemIndex,
-            ) => {
-              const departureTime =
-                item["odpt:departureTime"];
+        return objects.flatMap((item, itemIndex) => {
+          const departureTime = item["odpt:departureTime"];
 
-              if (!departureTime) {
-                return [];
-              }
+          if (!departureTime) {
+            return [];
+          }
 
-              const trainType =
-                getLastSegment(
-                  item["odpt:trainType"],
-                );
+          const trainType = getLastSegment(item["odpt:trainType"]);
 
-              const destinationStationFull =
-                item[
-                  "odpt:destinationStation"
-                ]?.[0];
+          const destinationStationFull = item["odpt:destinationStation"]?.[0];
 
-              const destinationStation =
-                getLastSegment(
-                  destinationStationFull,
-                );
+          const destinationStation = getLastSegment(destinationStationFull);
 
-              return [
-                {
-                  id:
-                    `tokyo-metro-${lineId}-${stationId}-` +
-                    `${directionId}-${departureTime}-` +
-                    `${timetableIndex}-${itemIndex}`,
-
-                  operator: "tokyo-metro",
-
-                  lineId,
-                  stationId,
-                  directionId,
-
-                  departureTime,
-
-                  trainType,
-
-                  destinationStation,
-
-                  destinationKo:
-                    destinationStation,
-
-                  destinationJa:
-                    destinationStation,
-                },
-              ];
-            },
+          const destinationNameKo = getOdptDestinationNameKo(
+            destinationStationFull,
           );
-        },
-      );
 
-    console.log(
-      "[Tokyo Metro Provider] StationTimetable result",
-      {
-        lineId,
-        stationId,
-        directionId,
-        count: timetable.length,
+          return [
+            {
+              id:
+                `tokyo-metro-${lineId}-${stationId}-` +
+                `${directionId}-${departureTime}-` +
+                `${timetableIndex}-${itemIndex}`,
+
+              operator: "tokyo-metro",
+
+              lineId,
+              stationId,
+              directionId,
+
+              departureTime,
+
+              trainType,
+
+              destinationStation,
+
+              destinationKo: destinationNameKo ?? destinationStation,
+
+              destinationJa: destinationStation,
+            },
+          ];
+        });
       },
     );
+
+    console.log("[Tokyo Metro Provider] StationTimetable result", {
+      lineId,
+      stationId,
+      directionId,
+      count: timetable.length,
+    });
 
     return timetable;
   },
