@@ -16,6 +16,7 @@ const RAILWAY_OPERATORS: RailwayOperator[] = [
 const TRAIN_INFORMATION_SUPPORTED_OPERATORS: RailwayOperator[] = [
   "jr-east",
    "tokyo-metro",
+   "toei",
 ];
 
 /*

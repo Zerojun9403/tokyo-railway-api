@@ -1,4 +1,8 @@
-import type { RailwayTimetable } from "@/types/railway";
+import type {
+  RailwayTimetable,
+  RailwayTrainInformation,
+  TrainInformationStatus,
+} from "@/types/railway";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api-public.odpt.org/api/v4";
@@ -181,6 +185,25 @@ type OdptStationTimetable = {
   "odpt:stationTimetableObject"?: OdptStationTimetableObject[];
 };
 
+type OdptMultilingualText = {
+  ja?: string;
+  en?: string;
+};
+
+type OdptTrainInformation = {
+  "@id"?: string;
+  "owl:sameAs"?: string;
+  "dc:date"?: string;
+  "dct:valid"?: string;
+  "odpt:operator"?: string;
+  "odpt:railway"?: string;
+  "odpt:timeOfOrigin"?: string;
+  "odpt:railDirection"?: string;
+  "odpt:trainInformationText"?: OdptMultilingualText;
+  "odpt:trainInformationCause"?: OdptMultilingualText;
+  "odpt:trainInformationStatus"?: OdptMultilingualText;
+};
+
 const getLastSegment = (value?: string): string | undefined => {
   if (!value) {
     return undefined;
@@ -215,6 +238,109 @@ const getRailDirection = (
   directionId: string,
 ): string | undefined => {
   return directionMaps[lineId]?.[directionId];
+};
+
+const normalizeTrainInformationStatus = (
+  rawStatus: string,
+  message: string,
+): TrainInformationStatus => {
+  const combined = `${rawStatus} ${message}`;
+
+  /*
+   * Toei 정상 운행 문구.
+   *
+   * "現在、１５分以上の遅延はありません。"
+   *
+   * 단순히 "遅延"이라는 단어만 검사하면
+   * 정상 상태를 delay로 오판하므로 반드시 먼저 검사한다.
+   */
+  if (
+    combined.includes("遅延はありません") ||
+    combined.includes("遅れはありません") ||
+    combined.includes("平常どおり") ||
+    combined.includes("平常通り") ||
+    combined.includes("通常どおり") ||
+    combined.includes("通常通り")
+  ) {
+    return "normal";
+  }
+
+  if (
+    combined.includes("運転見合わせ") ||
+    combined.includes("運転を見合わせ")
+  ) {
+    return "suspended";
+  }
+
+  if (
+    combined.includes("一部運休") ||
+    combined.includes("一部列車運休")
+  ) {
+    return "partial-suspension";
+  }
+
+  if (
+    combined.includes("直通運転中止") ||
+    combined.includes("直通運転を中止")
+  ) {
+    return "through-service-suspended";
+  }
+
+  if (
+    combined.includes("運転再開見込") ||
+    combined.includes("運転再開見込み")
+  ) {
+    return "resuming";
+  }
+
+  /*
+   * 실제 2026-09-07 Toei Asakusa 응답:
+   * trainInformationStatus.ja = "ダイヤ乱れ"
+   */
+  if (
+    combined.includes("ダイヤ乱れ") ||
+    combined.includes("ダイヤが乱れ") ||
+    combined.includes("遅延") ||
+    combined.includes("遅れ")
+  ) {
+    return "delay";
+  }
+
+  if (rawStatus || message) {
+    return "information";
+  }
+
+  return "unknown";
+};
+
+const getTrainInformationTitle = (
+  status: TrainInformationStatus,
+): string => {
+  switch (status) {
+    case "normal":
+      return "정상 운행";
+
+    case "delay":
+      return "지연";
+
+    case "suspended":
+      return "운행 중지";
+
+    case "partial-suspension":
+      return "일부 운휴";
+
+    case "through-service-suspended":
+      return "직통 운행 중지";
+
+    case "resuming":
+      return "운행 재개 예정";
+
+    case "information":
+      return "운행 안내";
+
+    default:
+      return "운행정보";
+  }
 };
 
 export const toeiProvider: RailwayProvider = {
@@ -350,7 +476,7 @@ export const toeiProvider: RailwayProvider = {
         const trainType =
           getLastSegment(item["odpt:trainType"]);
 
-       timetable.push({
+        timetable.push({
           id:
             item["odpt:trainNumber"] ??
             `${lineId}-${stationId}-${directionId}-${departureTime}`,
@@ -367,5 +493,97 @@ export const toeiProvider: RailwayProvider = {
     }
 
     return timetable;
+  },
+
+  getTrainInformation: async ({
+    lineId,
+  }): Promise<RailwayTrainInformation[]> => {
+    const railway = railwayMap[lineId];
+
+    if (!railway) {
+      throw new Error(
+        `Unsupported Toei railway: ${lineId}`,
+      );
+    }
+
+    const url = new URL(
+      `${ODPT_API_BASE_URL}/odpt:TrainInformation`,
+    );
+
+    url.searchParams.set(
+      "odpt:operator",
+      "odpt.Operator:Toei",
+    );
+
+    url.searchParams.set(
+      "odpt:railway",
+      railway,
+    );
+
+    console.log("[Toei TrainInformation Request]", {
+      lineId,
+      railway,
+      url: url.toString(),
+    });
+
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+
+      throw new Error(
+        `Toei TrainInformation request failed: ${response.status} ${body}`,
+      );
+    }
+
+    const data =
+      (await response.json()) as OdptTrainInformation[];
+
+    console.log("[Toei TrainInformation Result]", {
+      lineId,
+      railway,
+      records: data.length,
+    });
+
+    return data.map((item, index) => {
+      const message =
+        item["odpt:trainInformationText"]?.ja ?? "";
+
+      const rawStatus =
+        item["odpt:trainInformationStatus"]?.ja ?? "";
+
+      const cause =
+        item["odpt:trainInformationCause"]?.ja;
+
+      const status =
+        normalizeTrainInformationStatus(
+          rawStatus,
+          message,
+        );
+
+      return {
+        id:
+          item["owl:sameAs"] ??
+          item["@id"] ??
+          `toei-${lineId}-train-information-${index}`,
+
+        operator: "toei",
+        lineId,
+
+        status,
+        title: getTrainInformationTitle(status),
+
+        message,
+
+        cause,
+        rawStatus: rawStatus || undefined,
+
+        updatedAt:
+          item["dc:date"] ??
+          item["dct:valid"],
+      };
+    });
   },
 };
