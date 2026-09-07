@@ -154,6 +154,9 @@ export const odptDestinationNames: Record<string, OdptDestinationName> = {
   AkabaneIwabuchi: { ko: "아카바네이와부치" },
   Komagome: { ko: "고마고메" },
   OjiKamiya: { ko: "오지카미야" },
+  NakanoFujimicho: { ko: "나카노후지미초" },
+  Matsudo: { ko: "마쓰도" },
+  HiroO: { ko: "히로오" },
 
   // Tokyu
   ChuoRinkan: { ko: "주오린칸" },
