@@ -21,6 +21,50 @@ const railwayMap: Record<string, string> = {
   "tokyu-shin-yokohama": "odpt.Railway:Tokyu.TokyuShinYokohama",
 };
 
+type OdptStation = {
+  "owl:sameAs"?: string;
+  "odpt:stationCode"?: string;
+};
+
+const normalizeStationCode = (value: string): string =>
+  value
+    .trim()
+    .toUpperCase()
+    .replace(/^([A-Z]+)0+(\d+)$/, "$1$2");
+
+const resolveTokyuStationId = async ({
+  railway,
+  stationId,
+  apiKey,
+}: {
+  railway: string;
+  stationId: string;
+  apiKey: string;
+}): Promise<string> => {
+  if (!/^[A-Za-z]+\d+$/.test(stationId.trim())) {
+    return stationId.trim();
+  }
+
+  const url = new URL(`${ODPT_API_BASE_URL}/odpt:Station`);
+  url.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
+  url.searchParams.set("odpt:railway", railway);
+  url.searchParams.set("acl:consumerKey", apiKey);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Tokyu station request failed: ${response.status}`);
+  }
+
+  const stations = (await response.json()) as OdptStation[];
+  const targetCode = normalizeStationCode(stationId);
+  const matched = stations.find((item) => {
+    const code = item["odpt:stationCode"];
+    return code ? normalizeStationCode(code) === targetCode : false;
+  });
+
+  return getLastSegment(matched?.["owl:sameAs"]) ?? stationId.trim();
+};
+
 type OdptStationTimetableObject = {
   "odpt:departureTime"?: string;
   "odpt:trainType"?: string;
@@ -49,18 +93,10 @@ type OdptTrainInformation = {
   "owl:sameAs"?: string;
   "odpt:railway"?: string;
   "odpt:operator"?: string;
-  "odpt:trainInformationText"?:
-    | string
-    | OdptMultilingualText;
-  "odpt:trainInformationStatus"?:
-    | string
-    | OdptMultilingualText;
-  "odpt:trainInformationCause"?:
-    | string
-    | OdptMultilingualText;
-  "odpt:trainInformationRange"?:
-    | string
-    | OdptMultilingualText;
+  "odpt:trainInformationText"?: string | OdptMultilingualText;
+  "odpt:trainInformationStatus"?: string | OdptMultilingualText;
+  "odpt:trainInformationCause"?: string | OdptMultilingualText;
+  "odpt:trainInformationRange"?: string | OdptMultilingualText;
 };
 
 const getLastSegment = (value?: string): string | undefined => {
@@ -89,9 +125,7 @@ const getCalendar = (): "Weekday" | "SaturdayHoliday" => {
   return "Weekday";
 };
 
-const getJapaneseText = (
-  value?: string | OdptMultilingualText,
-): string => {
+const getJapaneseText = (value?: string | OdptMultilingualText): string => {
   if (!value) {
     return "";
   }
@@ -134,10 +168,7 @@ const normalizeTrainInformationStatus = (
     return "suspended";
   }
 
-  if (
-    combined.includes("一部運休") ||
-    combined.includes("一部列車運休")
-  ) {
+  if (combined.includes("一部運休") || combined.includes("一部列車運休")) {
     return "partial-suspension";
   }
 
@@ -171,9 +202,7 @@ const normalizeTrainInformationStatus = (
   return "unknown";
 };
 
-const getTrainInformationTitle = (
-  status: TrainInformationStatus,
-): string => {
+const getTrainInformationTitle = (status: TrainInformationStatus): string => {
   switch (status) {
     case "normal":
       return "정상 운행";
@@ -233,36 +262,28 @@ export const tokyuProvider: RailwayProvider = {
       throw new Error(`Invalid Tokyu railway ID: ${railway}`);
     }
 
-    const station = `odpt.Station:Tokyu.${railwayName}.${stationId}`;
+    const resolvedStationId = await resolveTokyuStationId({
+      railway,
+      stationId,
+      apiKey,
+    });
+
+    const station = `odpt.Station:Tokyu.${railwayName}.${resolvedStationId}`;
     const railDirection = `odpt.RailDirection:${directionId}`;
     const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:StationTimetable`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Tokyu",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
 
     url.searchParams.set("odpt:railway", railway);
     url.searchParams.set("odpt:station", station);
 
-    url.searchParams.set(
-      "odpt:railDirection",
-      railDirection,
-    );
+    url.searchParams.set("odpt:railDirection", railDirection);
 
-    url.searchParams.set(
-      "odpt:calendar",
-      calendar,
-    );
+    url.searchParams.set("odpt:calendar", calendar);
 
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
+    url.searchParams.set("acl:consumerKey", apiKey);
 
     const response = await fetch(url);
 
@@ -272,35 +293,28 @@ export const tokyuProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const data = (await response.json()) as OdptStationTimetable[];
 
     const timetable: RailwayTimetable[] = data.flatMap(
       (stationTimetable, timetableIndex) => {
-        const objects =
-          stationTimetable["odpt:stationTimetableObject"] ??
-          [];
+        const objects = stationTimetable["odpt:stationTimetableObject"] ?? [];
 
         return objects.flatMap((item, itemIndex) => {
-          const departureTime =
-            item["odpt:departureTime"];
+          const departureTime = item["odpt:departureTime"];
 
           if (!departureTime) {
             return [];
           }
 
-          const trainType =
-            getLastSegment(item["odpt:trainType"]);
+          const trainType = getLastSegment(item["odpt:trainType"]);
 
           const trainTypeName = trainType
             ? tokyuTrainTypes[trainType]
             : undefined;
 
-          const destinationStationFull =
-            item["odpt:destinationStation"]?.[0];
+          const destinationStationFull = item["odpt:destinationStation"]?.[0];
 
-          const destinationStation =
-            getLastSegment(destinationStationFull);
+          const destinationStation = getLastSegment(destinationStationFull);
 
           const destinationName = destinationStation
             ? tokyuStationNames[destinationStation]
@@ -335,45 +349,27 @@ export const tokyuProvider: RailwayProvider = {
     const apiKey = process.env.ODPT_API_KEY;
 
     if (!apiKey) {
-      throw new Error(
-        "ODPT_API_KEY is not configured.",
-      );
+      throw new Error("ODPT_API_KEY is not configured.");
     }
 
     const railway = railwayMap[lineId];
 
     if (!railway) {
-      throw new Error(
-        `Unsupported Tokyu lineId: ${lineId}`,
-      );
+      throw new Error(`Unsupported Tokyu lineId: ${lineId}`);
     }
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:TrainInformation`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainInformation`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Tokyu",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
 
-    url.searchParams.set(
-      "odpt:railway",
-      railway,
-    );
+    url.searchParams.set("odpt:railway", railway);
 
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
+    url.searchParams.set("acl:consumerKey", apiKey);
 
     console.log("[Tokyu TrainInformation Request]", {
       lineId,
       railway,
-      url: url.toString().replace(
-        apiKey,
-        "[REDACTED]",
-      ),
+      url: url.toString().replace(apiKey, "[REDACTED]"),
     });
 
     const response = await fetch(url, {
@@ -388,8 +384,7 @@ export const tokyuProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptTrainInformation[];
+    const data = (await response.json()) as OdptTrainInformation[];
 
     console.log("[Tokyu TrainInformation Result]", {
       lineId,
@@ -398,27 +393,17 @@ export const tokyuProvider: RailwayProvider = {
     });
 
     return data.map((item, index) => {
-      const message = getJapaneseText(
-        item["odpt:trainInformationText"],
-      );
+      const message = getJapaneseText(item["odpt:trainInformationText"]);
 
-      const rawStatus = getJapaneseText(
-        item["odpt:trainInformationStatus"],
-      );
+      const rawStatus = getJapaneseText(item["odpt:trainInformationStatus"]);
 
-      const cause = getJapaneseText(
-        item["odpt:trainInformationCause"],
-      );
+      const cause = getJapaneseText(item["odpt:trainInformationCause"]);
 
       const affectedSection = getJapaneseText(
         item["odpt:trainInformationRange"],
       );
 
-      const status =
-        normalizeTrainInformationStatus(
-          rawStatus,
-          message,
-        );
+      const status = normalizeTrainInformationStatus(rawStatus, message);
 
       return {
         id:
@@ -435,13 +420,10 @@ export const tokyuProvider: RailwayProvider = {
         message,
 
         cause: cause || undefined,
-        affectedSection:
-          affectedSection || undefined,
+        affectedSection: affectedSection || undefined,
         rawStatus: rawStatus || undefined,
 
-        updatedAt:
-          item["dc:date"] ??
-          item["dct:valid"],
+        updatedAt: item["dc:date"] ?? item["dct:valid"],
       };
     });
   },

@@ -32,6 +32,51 @@ type KeikyuStationTimetableObjectRaw = {
   "odpt:viaRailway"?: string[];
 };
 
+type KeikyuStationRaw = {
+  "owl:sameAs"?: string;
+  "odpt:stationCode"?: string;
+};
+
+const normalizeStationCode = (value: string): string =>
+  value
+    .trim()
+    .toUpperCase()
+    .replace(/^([A-Z]+)0+(\d+)$/, "$1$2");
+
+const resolveKeikyuStationId = async ({
+  railway,
+  stationId,
+  apiKey,
+}: {
+  railway: string;
+  stationId: string;
+  apiKey: string;
+}): Promise<string> => {
+  // ODPT short-name (e.g. Shinagawa) is already accepted.
+  if (!/^[A-Za-z]+\d+$/.test(stationId.trim())) {
+    return stationId.trim();
+  }
+
+  const url = new URL("https://api-challenge.odpt.org/api/v4/odpt:Station");
+  url.searchParams.set("odpt:operator", "odpt.Operator:Keikyu");
+  url.searchParams.set("odpt:railway", railway);
+  url.searchParams.set("acl:consumerKey", apiKey);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Keikyu station API request failed: ${response.status}`);
+  }
+
+  const stations = (await response.json()) as KeikyuStationRaw[];
+  const targetCode = normalizeStationCode(stationId);
+  const matched = stations.find((item) => {
+    const code = item["odpt:stationCode"];
+    return code ? normalizeStationCode(code) === targetCode : false;
+  });
+
+  return getShortName(matched?.["owl:sameAs"]) ?? stationId.trim();
+};
+
 type KeikyuStationTimetableRaw = {
   "@id": string;
   "@type": "odpt:StationTimetable";
@@ -255,7 +300,6 @@ const getApiKey = (): string => {
  * Keikyu Provider
  * =========================================================
  */
-
 
 type KeikyuMultilingualText = {
   ja?: string;
@@ -504,7 +548,13 @@ export const keikyuProvider: RailwayProvider = {
 
     const data = (await response.json()) as KeikyuStationTimetableRaw[];
 
-    const normalizedStation = stationId.trim().toLowerCase();
+    const resolvedStationId = await resolveKeikyuStationId({
+      railway,
+      stationId,
+      apiKey,
+    });
+
+    const normalizedStation = resolvedStationId.toLowerCase();
 
     const normalizedDirection = directionId.trim().toLowerCase();
 
@@ -627,10 +677,7 @@ export const keikyuProvider: RailwayProvider = {
         item["odpt:trainInformationRange"],
       );
 
-      const status = normalizeKeikyuTrainInformationStatus(
-        rawStatus,
-        message,
-      );
+      const status = normalizeKeikyuTrainInformationStatus(rawStatus, message);
 
       return {
         id:
@@ -649,5 +696,4 @@ export const keikyuProvider: RailwayProvider = {
       };
     });
   },
-
 };
