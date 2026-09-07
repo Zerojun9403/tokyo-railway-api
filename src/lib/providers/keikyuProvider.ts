@@ -1,4 +1,5 @@
 import type { RailwayProvider } from "./types";
+import { getOdptDestinationNameKo } from "./odptDestinationNames";
 import type {
   RailwayTimetable,
   RailwayTrain,
@@ -593,6 +594,8 @@ export const keikyuProvider: RailwayProvider = {
 
         const destinationName = getDestinationName(destinationStation);
 
+        const destinationNameKo = getOdptDestinationNameKo(destination);
+
         const trainType = getShortName(item["odpt:trainType"]) ?? undefined;
 
         return {
@@ -610,7 +613,8 @@ export const keikyuProvider: RailwayProvider = {
 
           destinationStation,
 
-          destinationKo: destinationName?.ko,
+          destinationKo:
+            destinationNameKo ?? destinationName?.ko ?? destinationStation,
 
           destinationJa: destinationName?.ja,
         };

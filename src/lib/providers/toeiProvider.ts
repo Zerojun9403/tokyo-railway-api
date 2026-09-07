@@ -3,6 +3,7 @@ import type {
   RailwayTrainInformation,
   TrainInformationStatus,
 } from "@/types/railway";
+import { getOdptDestinationNameKo } from "./odptDestinationNames";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api-public.odpt.org/api/v4";
@@ -272,10 +273,7 @@ const normalizeTrainInformationStatus = (
     return "suspended";
   }
 
-  if (
-    combined.includes("一部運休") ||
-    combined.includes("一部列車運休")
-  ) {
+  if (combined.includes("一部運休") || combined.includes("一部列車運休")) {
     return "partial-suspension";
   }
 
@@ -313,9 +311,7 @@ const normalizeTrainInformationStatus = (
   return "unknown";
 };
 
-const getTrainInformationTitle = (
-  status: TrainInformationStatus,
-): string => {
+const getTrainInformationTitle = (status: TrainInformationStatus): string => {
   switch (status) {
     case "normal":
       return "정상 운행";
@@ -346,11 +342,7 @@ const getTrainInformationTitle = (
 export const toeiProvider: RailwayProvider = {
   operator: "toei",
 
-  getTrains: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTrains: async ({ lineId, stationId, directionId }) => {
     console.log("[Toei Provider]", {
       lineId,
       stationId,
@@ -378,17 +370,13 @@ export const toeiProvider: RailwayProvider = {
     const stationName = getStationName(lineId, stationId);
 
     if (!stationName) {
-      throw new Error(
-        `Unsupported Toei station: ${lineId}/${stationId}`,
-      );
+      throw new Error(`Unsupported Toei station: ${lineId}/${stationId}`);
     }
 
     const direction = getRailDirection(lineId, directionId);
 
     if (!direction) {
-      throw new Error(
-        `Unsupported Toei direction: ${lineId}/${directionId}`,
-      );
+      throw new Error(`Unsupported Toei direction: ${lineId}/${directionId}`);
     }
 
     const railwayName = getLastSegment(railway);
@@ -397,30 +385,20 @@ export const toeiProvider: RailwayProvider = {
       throw new Error(`Invalid Toei railway: ${railway}`);
     }
 
-    const station =
-      `odpt.Station:Toei.${railwayName}.${stationName}`;
+    const station = `odpt.Station:Toei.${railwayName}.${stationName}`;
 
-    const railDirection =
-      direction.startsWith("Toei.")
-        ? `odpt.RailDirection:${direction}`
-        : `odpt.RailDirection:${direction}`;
+    const railDirection = direction.startsWith("Toei.")
+      ? `odpt.RailDirection:${direction}`
+      : `odpt.RailDirection:${direction}`;
 
     const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:StationTimetable`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Toei",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:Toei");
     url.searchParams.set("odpt:railway", railway);
     url.searchParams.set("odpt:station", station);
-    url.searchParams.set(
-      "odpt:railDirection",
-      railDirection,
-    );
+    url.searchParams.set("odpt:railDirection", railDirection);
     url.searchParams.set("odpt:calendar", calendar);
 
     console.log("[Toei StationTimetable Request]", {
@@ -444,8 +422,7 @@ export const toeiProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const data = (await response.json()) as OdptStationTimetable[];
 
     console.log("[Toei StationTimetable Result]", {
       lineId,
@@ -457,8 +434,7 @@ export const toeiProvider: RailwayProvider = {
     const timetable: RailwayTimetable[] = [];
 
     for (const record of data) {
-      const objects =
-        record["odpt:stationTimetableObject"] ?? [];
+      const objects = record["odpt:stationTimetableObject"] ?? [];
 
       for (const item of objects) {
         const departureTime = item["odpt:departureTime"];
@@ -467,14 +443,13 @@ export const toeiProvider: RailwayProvider = {
           continue;
         }
 
-        const destination =
-          item["odpt:destinationStation"]?.[0];
+        const destination = item["odpt:destinationStation"]?.[0];
 
-        const destinationName =
-          getLastSegment(destination);
+        const destinationName = getLastSegment(destination);
 
-        const trainType =
-          getLastSegment(item["odpt:trainType"]);
+        const destinationNameKo = getOdptDestinationNameKo(destination);
+
+        const trainType = getLastSegment(item["odpt:trainType"]);
 
         timetable.push({
           id:
@@ -486,7 +461,7 @@ export const toeiProvider: RailwayProvider = {
           directionId,
           departureTime,
           trainType: trainType ?? "Local",
-          destinationKo: destinationName,
+          destinationKo: destinationNameKo ?? destinationName,
           destinationJa: destinationName,
         });
       }
@@ -501,24 +476,14 @@ export const toeiProvider: RailwayProvider = {
     const railway = railwayMap[lineId];
 
     if (!railway) {
-      throw new Error(
-        `Unsupported Toei railway: ${lineId}`,
-      );
+      throw new Error(`Unsupported Toei railway: ${lineId}`);
     }
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:TrainInformation`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainInformation`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Toei",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:Toei");
 
-    url.searchParams.set(
-      "odpt:railway",
-      railway,
-    );
+    url.searchParams.set("odpt:railway", railway);
 
     console.log("[Toei TrainInformation Request]", {
       lineId,
@@ -538,8 +503,7 @@ export const toeiProvider: RailwayProvider = {
       );
     }
 
-    const data =
-      (await response.json()) as OdptTrainInformation[];
+    const data = (await response.json()) as OdptTrainInformation[];
 
     console.log("[Toei TrainInformation Result]", {
       lineId,
@@ -548,20 +512,13 @@ export const toeiProvider: RailwayProvider = {
     });
 
     return data.map((item, index) => {
-      const message =
-        item["odpt:trainInformationText"]?.ja ?? "";
+      const message = item["odpt:trainInformationText"]?.ja ?? "";
 
-      const rawStatus =
-        item["odpt:trainInformationStatus"]?.ja ?? "";
+      const rawStatus = item["odpt:trainInformationStatus"]?.ja ?? "";
 
-      const cause =
-        item["odpt:trainInformationCause"]?.ja;
+      const cause = item["odpt:trainInformationCause"]?.ja;
 
-      const status =
-        normalizeTrainInformationStatus(
-          rawStatus,
-          message,
-        );
+      const status = normalizeTrainInformationStatus(rawStatus, message);
 
       return {
         id:
@@ -580,9 +537,7 @@ export const toeiProvider: RailwayProvider = {
         cause,
         rawStatus: rawStatus || undefined,
 
-        updatedAt:
-          item["dc:date"] ??
-          item["dct:valid"],
+        updatedAt: item["dc:date"] ?? item["dct:valid"],
       };
     });
   },

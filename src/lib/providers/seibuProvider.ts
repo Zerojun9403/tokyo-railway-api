@@ -5,6 +5,7 @@ import type {
 } from "@/types/railway";
 import { seibuStationNames } from "./seibuStationNames";
 import { seibuTrainTypes } from "./seibuTrainTypes";
+import { getOdptDestinationNameKo } from "./odptDestinationNames";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api-challenge.odpt.org/api/v4";
@@ -323,6 +324,10 @@ export const seibuProvider: RailwayProvider = {
             ? seibuStationNames[destinationStation]
             : undefined;
 
+          const destinationNameKo = getOdptDestinationNameKo(
+            destinationStationFull,
+          );
+
           return [
             {
               id: `seibu-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
@@ -335,8 +340,9 @@ export const seibuProvider: RailwayProvider = {
               trainTypeKo: trainTypeName?.ko,
               trainTypeJa: trainTypeName?.ja,
               destinationStation,
-              destinationKo: destinationName?.ko,
-              destinationJa: destinationName?.ja,
+              destinationKo:
+                destinationNameKo ?? destinationName?.ko ?? destinationStation,
+              destinationJa: destinationName?.ja ?? destinationStation,
             },
           ];
         });
