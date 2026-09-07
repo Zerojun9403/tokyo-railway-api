@@ -1,4 +1,8 @@
-import type { RailwayTimetable } from "@/types/railway";
+import type {
+  RailwayTimetable,
+  RailwayTrainInformation,
+  TrainInformationStatus,
+} from "@/types/railway";
 import type { RailwayProvider } from "./types";
 
 const ODPT_API_BASE_URL = "https://api.odpt.org/api/v4";
@@ -328,6 +332,24 @@ type OdptStationTimetable = {
   "odpt:stationTimetableObject"?: OdptStationTimetableObject[];
 };
 
+type OdptTrainInformationText = {
+  ja?: string;
+  en?: string;
+};
+
+type OdptTrainInformation = {
+  "@id"?: string;
+  "owl:sameAs"?: string;
+  "dc:date"?: string;
+  "dct:valid"?: string;
+  "odpt:operator"?: string;
+  "odpt:railway"?: string;
+  "odpt:trainInformationStatus"?: string | OdptTrainInformationText;
+  "odpt:trainInformationText"?: string | OdptTrainInformationText;
+  "odpt:trainInformationCause"?: string | OdptTrainInformationText;
+  "odpt:trainInformationRange"?: string | OdptTrainInformationText;
+};
+
 /*
  * =========================================================
  * Helpers
@@ -406,6 +428,81 @@ const getRailDirection = (
   return direction;
 };
 
+const getJapaneseText = (
+  value?: string | OdptTrainInformationText,
+): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.ja ?? value.en;
+};
+
+const normalizeTrainInformationStatus = (
+  rawStatus?: string,
+  message?: string,
+): TrainInformationStatus => {
+  const text = `${rawStatus ?? ""} ${message ?? ""}`;
+
+  if (text.includes("運転見合わせ") || text.includes("運転を見合わせ")) {
+    return "suspended";
+  }
+  if (text.includes("一部運休") || text.includes("一部列車運休")) {
+    return "partial-suspension";
+  }
+  if (text.includes("直通運転中止") || text.includes("直通運転を中止")) {
+    return "through-service-suspended";
+  }
+  if (text.includes("運転再開見込") || text.includes("運転再開見込み")) {
+    return "resuming";
+  }
+  if (text.includes("遅延") || text.includes("遅れ")) {
+    return "delay";
+  }
+  if (
+    text.includes("平常どおり") ||
+    text.includes("平常通り") ||
+    text.includes("通常どおり") ||
+    text.includes("通常通り")
+  ) {
+    return "normal";
+  }
+  if (rawStatus?.includes("お知らせ") || rawStatus?.includes("情報")) {
+    return "information";
+  }
+  if (rawStatus || message) {
+    return "information";
+  }
+  return "unknown";
+};
+
+const getTrainInformationTitle = (
+  status: TrainInformationStatus,
+): string => {
+  switch (status) {
+    case "normal":
+      return "정상 운행";
+    case "delay":
+      return "지연";
+    case "suspended":
+      return "운행 중지";
+    case "partial-suspension":
+      return "일부 운휴";
+    case "through-service-suspended":
+      return "직통 운행 중지";
+    case "resuming":
+      return "운행 재개 예정";
+    case "information":
+      return "운행 안내";
+    default:
+      return "운행정보";
+  }
+};
+
 /*
  * =========================================================
  * Provider
@@ -434,6 +531,86 @@ export const tokyoMetroProvider: RailwayProvider = {
     });
 
     return [];
+  },
+
+  /*
+   * =======================================================
+   * Train Information
+   * =======================================================
+   */
+
+  getTrainInformation: async ({ lineId }) => {
+    const apiKey = process.env.TOKYO_METRO_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("TOKYO_METRO_API_KEY is not configured.");
+    }
+
+    const railway = railwayMap[lineId];
+
+    if (!railway) {
+      throw new Error(`Unsupported Tokyo Metro lineId: ${lineId}`);
+    }
+
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainInformation`);
+    url.searchParams.set("odpt:operator", "odpt.Operator:TokyoMetro");
+    url.searchParams.set("odpt:railway", railway);
+    url.searchParams.set("acl:consumerKey", apiKey);
+
+    const response = await fetch(url, { cache: "no-store" });
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error("[Tokyo Metro Provider] TrainInformation request failed", {
+        lineId,
+        railway,
+        status: response.status,
+        statusText: response.statusText,
+        body,
+      });
+      throw new Error(
+        `Tokyo Metro train information request failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as OdptTrainInformation[];
+
+    const information: RailwayTrainInformation[] = data.map((item, index) => {
+      const message =
+        getJapaneseText(item["odpt:trainInformationText"]) ?? "";
+      const rawStatus = getJapaneseText(
+        item["odpt:trainInformationStatus"],
+      );
+      const cause = getJapaneseText(item["odpt:trainInformationCause"]);
+      const affectedSection = getJapaneseText(
+        item["odpt:trainInformationRange"],
+      );
+      const status = normalizeTrainInformationStatus(rawStatus, message);
+
+      return {
+        id:
+          item["owl:sameAs"] ??
+          item["@id"] ??
+          `tokyo-metro-${lineId}-train-information-${index}`,
+        operator: "tokyo-metro",
+        lineId,
+        status,
+        title: getTrainInformationTitle(status),
+        message,
+        cause,
+        affectedSection,
+        rawStatus,
+        updatedAt: item["dc:date"] ?? item["dct:valid"],
+      };
+    });
+
+    console.log("[Tokyo Metro Provider] TrainInformation result", {
+      lineId,
+      railway,
+      count: information.length,
+    });
+
+    return information;
   },
 
   /*
