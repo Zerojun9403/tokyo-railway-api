@@ -67,11 +67,50 @@ const stationMaps: Record<
     JA11: "Shinjuku",
     JA12: "Ikebukuro",
   },
-  
+
    "chuo-rapid": {
     JC01: "Tokyo",
     JC05: "Shinjuku",
   },
+  
+  "chuo-sobu": {
+  JB10: "Shinjuku",
+  JB11: "Yoyogi",
+},
+"shonan-shinjuku": {
+  JS20: "Shinjuku",
+  JS19: "Shibuya",
+},
+tokaido: {  
+  JT01: "Tokyo",
+  JT02: "Shimbashi",
+},
+
+"keihin-tohoku": {
+  JK26: "Tokyo",
+  JK25: "Yurakucho",
+},
+
+keiyo: {
+  JE01: "Tokyo",
+  JE02: "Hatchobori",
+},
+yokosuka: {
+  JO19: "Tokyo",
+  JO18: "Shimbashi",
+},
+
+sobu: {
+  JO28: "Chiba",
+  JO30: "Tsuga",
+},
+
+"sobu-rapid": {  
+  JO19: "Tokyo",
+  JO22: "Kinshicho",
+},
+
+
 };
 
 
