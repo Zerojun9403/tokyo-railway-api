@@ -384,6 +384,7 @@ const station =
                   trainType,
                   trainTypeKo: trainTypeName?.ko,
                   trainTypeJa: trainTypeName?.ja,
+                  trainNumber: item["odpt:trainNumber"],
                   destinationStation,
                   destinationKo: destinationName?.ko,
                   destinationJa: destinationName?.ja,

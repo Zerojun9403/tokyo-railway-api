@@ -47,6 +47,7 @@ export type RailwayTimetable = {
   trainType?: string;
   trainTypeKo?: string;
   trainTypeJa?: string;
+  trainNumber?: string; 
   destinationStation?: string;
   destinationKo?: string;
   destinationJa?: string;
