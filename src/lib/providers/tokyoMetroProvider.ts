@@ -701,6 +701,10 @@ export const tokyoMetroProvider: RailwayProvider = {
  
          const destinationStation = getLastSegment(destinationStationFull);
 
+          const destinationNameKo = getOdptDestinationNameKo(
+            destinationStationFull,
+          );
+
           return [
             {
               id:
