@@ -107,30 +107,6 @@ const normalizeYokosukaSobuLineId = (stationId: string): string => {
  * =========================================================
  * JR East - Narita / Narita Airport Branch
  * =========================================================
- *
- * GUIDE:
- *
- * narita
- *
- * JO28 Chiba
- *   ↓
- * JO35 Narita
- *   ↓
- * JO36 Airport Terminal 2/3
- *   ↓
- * JO37 Narita Airport Terminal 1
- *
- * ODPT:
- *
- * JR-East.Narita
- * JR-East.NaritaAirportBranch
- *
- * JO28 ~ JO35
- *   -> Narita
- *
- * JO36 ~ JO37
- *   -> NaritaAirportBranch
- * =========================================================
  */
 
 const normalizeNaritaLineId = (stationId: string): string => {
@@ -158,33 +134,53 @@ const normalizeNaritaLineId = (stationId: string): string => {
  * Direction
  * =========================================================
  *
- * 현재 GUIDE와 ODPT 방향 ID가 일치한다.
+ * GUIDE의 통합 요코스카선·소부쾌속선은
+ * Northbound / Southbound를 사용한다.
  *
- * JR East:
+ * Provider의 Yokosuka / SobuRapid은
+ * Inbound / Outbound를 사용하므로 여기에서 변환한다.
  *
- * Chuo Rapid
- *   Inbound / Outbound
+ * Yokosuka:
+ *   Northbound -> Inbound
+ *   Southbound -> Outbound
  *
- * Chuo-Sobu Local
- *   Eastbound / Westbound
+ * Sobu Rapid:
+ *   Northbound -> Outbound
+ *   Southbound -> Inbound
  *
- * Keihin-Tohoku
- *   Northbound / Southbound
- *
- * Saikyo
- *   Northbound / Southbound
- *
- * Shonan-Shinjuku
- *   Northbound / Southbound
- *
- * 그 외 현재 막차 지원 노선:
- *   Inbound / Outbound
- *
- * 따라서 현재는 directionId를 그대로 전달한다.
+ * 그 외 노선은 현재 GUIDE 방향 ID를 그대로 전달한다.
  * =========================================================
  */
 
-const normalizeDirectionId = (directionId: string): string => {
+const normalizeDirectionId = (
+  operator: RailwayOperator,
+  lineId: string,
+  directionId: string,
+): string => {
+  if (operator !== "jr-east") {
+    return directionId;
+  }
+
+  if (lineId === "yokosuka") {
+    if (directionId === "Northbound") {
+      return "Inbound";
+    }
+
+    if (directionId === "Southbound") {
+      return "Outbound";
+    }
+  }
+
+  if (lineId === "sobu-rapid") {
+    if (directionId === "Northbound") {
+      return "Outbound";
+    }
+
+    if (directionId === "Southbound") {
+      return "Inbound";
+    }
+  }
+
   return directionId;
 };
 
@@ -226,6 +222,6 @@ export const normalizeLastTrainRequest = ({
     operator,
     lineId: normalizedLineId,
     stationId,
-    directionId: normalizeDirectionId(directionId),
+    directionId: normalizeDirectionId(operator, normalizedLineId, directionId),
   };
 };
