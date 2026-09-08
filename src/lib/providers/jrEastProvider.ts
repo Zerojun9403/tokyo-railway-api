@@ -26,6 +26,45 @@ const railwayMap: Record<string, string> = {
   "narita-airport": "odpt.Railway:JR-East.NaritaAirportBranch",
 };
 
+const stationMaps: Record<
+  string,
+  Record<string, string>
+> = {
+  yamanote: {
+    JY01: "Tokyo",
+    JY02: "Kanda",
+    JY03: "Akihabara",
+    JY04: "Okachimachi",
+    JY05: "Ueno",
+    JY06: "Uguisudani",
+    JY07: "Nippori",
+    JY08: "NishiNippori",
+    JY09: "Tabata",
+    JY10: "Komagome",
+    JY11: "Sugamo",
+    JY12: "Otsuka",
+    JY13: "Ikebukuro",
+    JY14: "Mejiro",
+    JY15: "Takadanobaba",
+    JY16: "ShinOkubo",
+    JY17: "Shinjuku",
+    JY18: "Yoyogi",
+    JY19: "Harajuku",
+    JY20: "Shibuya",
+    JY21: "Ebisu",
+    JY22: "Meguro",
+    JY23: "Gotanda",
+    JY24: "Osaki",
+    JY25: "Shinagawa",
+    JY26: "TakanawaGateway",
+    JY27: "Tamachi",
+    JY28: "Hamamatsucho",
+    JY29: "Shimbashi",
+    JY30: "Yurakucho",
+  },
+};
+
+
 type OdptStationTimetableObject = {
   "odpt:departureTime"?: string;
   "odpt:trainNumber"?: string;
@@ -215,13 +254,16 @@ export const jrEastProvider: RailwayProvider = {
       );
     }
 
-    const railwayName = railway.replace(
-      "odpt.Railway:",
-      "",
-    );
+const railwayName = railway.replace(
+  "odpt.Railway:",
+  "",
+);
 
-    const station =
-      `odpt.Station:${railwayName}.${stationId}`;
+const stationName =
+  stationMaps[lineId]?.[stationId] ?? stationId;
+
+const station =
+  `odpt.Station:${railwayName}.${stationName}`;
 
     const railDirection =
       `odpt.RailDirection:${directionId}`;
