@@ -72,6 +72,7 @@ const resolveSeibuStationId = async ({
 type OdptStationTimetableObject = {
   "odpt:departureTime"?: string;
   "odpt:trainType"?: string;
+  "odpt:trainNumber"?: string;
   "odpt:destinationStation"?: string[];
 };
 
@@ -312,6 +313,8 @@ export const seibuProvider: RailwayProvider = {
 
           const trainType = getLastSegment(item["odpt:trainType"]);
 
+          const trainNumber = item["odpt:trainNumber"];
+
           const trainTypeName = trainType
             ? seibuTrainTypes[trainType]
             : undefined;
@@ -337,6 +340,7 @@ export const seibuProvider: RailwayProvider = {
               directionId,
               departureTime,
               trainType,
+              trainNumber,
               trainTypeKo: trainTypeName?.ko,
               trainTypeJa: trainTypeName?.ja,
               destinationStation,

@@ -28,6 +28,7 @@ type KeikyuTrainRaw = {
 
 type KeikyuStationTimetableObjectRaw = {
   "odpt:trainType"?: string;
+  "odpt:trainNumber"?: string;
   "odpt:departureTime"?: string;
   "odpt:destinationStation"?: string[];
   "odpt:viaRailway"?: string[];
@@ -598,6 +599,8 @@ export const keikyuProvider: RailwayProvider = {
 
         const trainType = getShortName(item["odpt:trainType"]) ?? undefined;
 
+        const trainNumber = item["odpt:trainNumber"];
+
         return {
           id: `${timetableData["@id"]}-${index}`,
 
@@ -610,6 +613,7 @@ export const keikyuProvider: RailwayProvider = {
           departureTime: item["odpt:departureTime"]!,
 
           trainType,
+          trainNumber,
 
           destinationStation,
 

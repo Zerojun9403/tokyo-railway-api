@@ -693,15 +693,13 @@ export const tokyoMetroProvider: RailwayProvider = {
             return [];
           }
 
-          const trainType = getLastSegment(item["odpt:trainType"]);
+         const trainType = getLastSegment(item["odpt:trainType"]);
 
-          const destinationStationFull = item["odpt:destinationStation"]?.[0];
+         const trainNumber = item["odpt:trainNumber"];
 
-          const destinationStation = getLastSegment(destinationStationFull);
-
-          const destinationNameKo = getOdptDestinationNameKo(
-            destinationStationFull,
-          );
+         const destinationStationFull = item["odpt:destinationStation"]?.[0];
+ 
+         const destinationStation = getLastSegment(destinationStationFull);
 
           return [
             {
@@ -716,11 +714,13 @@ export const tokyoMetroProvider: RailwayProvider = {
               stationId,
               directionId,
 
-              departureTime,
+             departureTime,
 
               trainType,
 
-              destinationStation,
+              trainNumber,
+
+              destinationStation, 
 
               destinationKo: destinationNameKo ?? destinationStation,
 

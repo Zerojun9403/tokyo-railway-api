@@ -451,6 +451,8 @@ export const toeiProvider: RailwayProvider = {
 
         const trainType = getLastSegment(item["odpt:trainType"]);
 
+        const trainNumber = item["odpt:trainNumber"];
+
         timetable.push({
           id:
             item["odpt:trainNumber"] ??
@@ -461,6 +463,7 @@ export const toeiProvider: RailwayProvider = {
           directionId,
           departureTime,
           trainType: trainType ?? "Local",
+          trainNumber,
           destinationKo: destinationNameKo ?? destinationName,
           destinationJa: destinationName,
         });
