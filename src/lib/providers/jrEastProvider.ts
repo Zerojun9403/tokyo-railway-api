@@ -62,6 +62,11 @@ const stationMaps: Record<
     JY29: "Shimbashi",
     JY30: "Yurakucho",
   },
+
+  saikyo: {
+    JA11: "Shinjuku",
+    JA12: "Ikebukuro",
+  },
 };
 
 
