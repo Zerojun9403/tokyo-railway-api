@@ -67,6 +67,11 @@ const stationMaps: Record<
     JA11: "Shinjuku",
     JA12: "Ikebukuro",
   },
+  
+   "chuo-rapid": {
+    JC01: "Tokyo",
+    JC05: "Shinjuku",
+  },
 };
 
 
