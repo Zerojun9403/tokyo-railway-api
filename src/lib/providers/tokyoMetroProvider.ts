@@ -317,6 +317,7 @@ const directionMaps: Record<string, Record<string, string>> = {
  */
 
 type OdptStationTimetableObject = {
+  "odpt:arrivalTime"?: string;
   "odpt:departureTime"?: string;
   "odpt:trainType"?: string;
   "odpt:destinationStation"?: string[];
@@ -687,19 +688,20 @@ export const tokyoMetroProvider: RailwayProvider = {
         const objects = stationTimetable["odpt:stationTimetableObject"] ?? [];
 
         return objects.flatMap((item, itemIndex) => {
-          const departureTime = item["odpt:departureTime"];
+          const departureTime =
+            item["odpt:departureTime"] ?? item["odpt:arrivalTime"];
 
           if (!departureTime) {
             return [];
           }
 
-         const trainType = getLastSegment(item["odpt:trainType"]);
+          const trainType = getLastSegment(item["odpt:trainType"]);
 
-         const trainNumber = item["odpt:trainNumber"];
+          const trainNumber = item["odpt:trainNumber"];
 
-         const destinationStationFull = item["odpt:destinationStation"]?.[0];
- 
-         const destinationStation = getLastSegment(destinationStationFull);
+          const destinationStationFull = item["odpt:destinationStation"]?.[0];
+
+          const destinationStation = getLastSegment(destinationStationFull);
 
           const destinationNameKo = getOdptDestinationNameKo(
             destinationStationFull,
@@ -718,13 +720,13 @@ export const tokyoMetroProvider: RailwayProvider = {
               stationId,
               directionId,
 
-             departureTime,
+              departureTime,
 
               trainType,
 
               trainNumber,
 
-              destinationStation, 
+              destinationStation,
 
               destinationKo: destinationNameKo ?? destinationStation,
 
