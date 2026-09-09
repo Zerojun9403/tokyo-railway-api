@@ -7,13 +7,13 @@ import { jrEastStationNames } from "@/lib/mappings/jrEastStationNames";
 import { jrEastTrainTypes } from "@/lib/mappings/jrEastTrainTypes";
 import type { RailwayProvider } from "./types";
 
-const ODPT_API_BASE_URL =
-  "https://api-challenge.odpt.org/api/v4";
+const ODPT_API_BASE_URL = "https://api-challenge.odpt.org/api/v4";
 
 const railwayMap: Record<string, string> = {
   yamanote: "odpt.Railway:JR-East.Yamanote",
   "chuo-rapid": "odpt.Railway:JR-East.ChuoRapid",
   "chuo-sobu": "odpt.Railway:JR-East.ChuoSobuLocal",
+  "chuo-sobu-local": "odpt.Railway:JR-East.ChuoSobuLocal",
   saikyo: "odpt.Railway:JR-East.SaikyoKawagoe",
   "shonan-shinjuku": "odpt.Railway:JR-East.ShonanShinjuku",
   tokaido: "odpt.Railway:JR-East.Tokaido",
@@ -26,10 +26,7 @@ const railwayMap: Record<string, string> = {
   "narita-airport": "odpt.Railway:JR-East.NaritaAirportBranch",
 };
 
-const stationMaps: Record<
-  string,
-  Record<string, string>
-> = {
+const stationMaps: Record<string, Record<string, string>> = {
   yamanote: {
     JY01: "Tokyo",
     JY02: "Kanda",
@@ -68,51 +65,126 @@ const stationMaps: Record<
     JA12: "Ikebukuro",
   },
 
-   "chuo-rapid": {
+  "chuo-rapid": {
     JC01: "Tokyo",
     JC05: "Shinjuku",
   },
-  
   "chuo-sobu": {
-  JB10: "Shinjuku",
-  JB11: "Yoyogi",
-},
-"shonan-shinjuku": {
-  JS20: "Shinjuku",
-  JS19: "Shibuya",
-},
-tokaido: {  
-  JT01: "Tokyo",
-  JT02: "Shimbashi",
-},
+    JB01: "Mitaka",
+    JB02: "Kichijoji",
+    JB03: "NishiOgikubo",
+    JB04: "Ogikubo",
+    JB05: "Asagaya",
+    JB06: "Koenji",
+    JB07: "Nakano",
+    JB08: "HigashiNakano",
+    JB09: "Okubo",
+    JB10: "Shinjuku",
+    JB11: "Yoyogi",
+    JB12: "Sendagaya",
+    JB13: "Shinanomachi",
+    JB14: "Yotsuya",
+    JB15: "Ichigaya",
+    JB16: "Iidabashi",
+    JB17: "Suidobashi",
+    JB18: "Ochanomizu",
+    JB19: "Akihabara",
+    JB20: "Asakusabashi",
+    JB21: "Ryogoku",
+    JB22: "Kinshicho",
+    JB23: "Kameido",
+    JB24: "Hirai",
+    JB25: "ShinKoiwa",
+    JB26: "Koiwa",
+    JB27: "Ichikawa",
+    JB28: "MotoYawata",
+    JB29: "ShimosaNakayama",
+    JB30: "NishiFunabashi",
+    JB31: "Funabashi",
+    JB32: "HigashiFunabashi",
+    JB33: "Tsudanuma",
+    JB34: "MakuhariHongo",
+    JB35: "Makuhari",
+    JB36: "ShinKemigawa",
+    JB37: "Inage",
+    JB38: "NishiChiba",
+    JB39: "Chiba",
+  },
 
-"keihin-tohoku": {
-  JK26: "Tokyo",
-  JK25: "Yurakucho",
-},
+  "chuo-sobu-local": {
+    JB01: "Mitaka",
+    JB02: "Kichijoji",
+    JB03: "NishiOgikubo",
+    JB04: "Ogikubo",
+    JB05: "Asagaya",
+    JB06: "Koenji",
+    JB07: "Nakano",
+    JB08: "HigashiNakano",
+    JB09: "Okubo",
+    JB10: "Shinjuku",
+    JB11: "Yoyogi",
+    JB12: "Sendagaya",
+    JB13: "Shinanomachi",
+    JB14: "Yotsuya",
+    JB15: "Ichigaya",
+    JB16: "Iidabashi",
+    JB17: "Suidobashi",
+    JB18: "Ochanomizu",
+    JB19: "Akihabara",
+    JB20: "Asakusabashi",
+    JB21: "Ryogoku",
+    JB22: "Kinshicho",
+    JB23: "Kameido",
+    JB24: "Hirai",
+    JB25: "ShinKoiwa",
+    JB26: "Koiwa",
+    JB27: "Ichikawa",
+    JB28: "MotoYawata",
+    JB29: "ShimosaNakayama",
+    JB30: "NishiFunabashi",
+    JB31: "Funabashi",
+    JB32: "HigashiFunabashi",
+    JB33: "Tsudanuma",
+    JB34: "MakuhariHongo",
+    JB35: "Makuhari",
+    JB36: "ShinKemigawa",
+    JB37: "Inage",
+    JB38: "NishiChiba",
+    JB39: "Chiba",
+  },
+  "shonan-shinjuku": {
+    JS20: "Shinjuku",
+    JS19: "Shibuya",
+  },
+  tokaido: {
+    JT01: "Tokyo",
+    JT02: "Shimbashi",
+  },
 
-keiyo: {
-  JE01: "Tokyo",
-  JE02: "Hatchobori",
-},
-yokosuka: {
-  JO19: "Tokyo",
-  JO18: "Shimbashi",
-},
+  "keihin-tohoku": {
+    JK26: "Tokyo",
+    JK25: "Yurakucho",
+  },
 
-sobu: {
-  JO28: "Chiba",
-  JO30: "Tsuga",
-},
+  keiyo: {
+    JE01: "Tokyo",
+    JE02: "Hatchobori",
+  },
+  yokosuka: {
+    JO19: "Tokyo",
+    JO18: "Shimbashi",
+  },
 
-"sobu-rapid": {  
-  JO19: "Tokyo",
-  JO22: "Kinshicho",
-},
+  sobu: {
+    JO28: "Chiba",
+    JO30: "Tsuga",
+  },
 
-
+  "sobu-rapid": {
+    JO19: "Tokyo",
+    JO22: "Kinshicho",
+  },
 };
-
 
 type OdptStationTimetableObject = {
   "odpt:departureTime"?: string;
@@ -143,9 +215,7 @@ type OdptTrainInformation = {
   "odpt:trainInformationRange"?: string;
 };
 
-const getLastSegment = (
-  value?: string,
-): string | undefined => {
+const getLastSegment = (value?: string): string | undefined => {
   if (!value) {
     return undefined;
   }
@@ -184,10 +254,7 @@ const normalizeTrainInformationStatus = (
     return "suspended";
   }
 
-  if (
-    combined.includes("一部運休") ||
-    combined.includes("一部列車運休")
-  ) {
+  if (combined.includes("一部運休") || combined.includes("一部列車運休")) {
     return "partial-suspension";
   }
 
@@ -205,10 +272,7 @@ const normalizeTrainInformationStatus = (
     return "resuming";
   }
 
-  if (
-    combined.includes("遅延") ||
-    combined.includes("遅れ")
-  ) {
+  if (combined.includes("遅延") || combined.includes("遅れ")) {
     return "delay";
   }
 
@@ -221,10 +285,7 @@ const normalizeTrainInformationStatus = (
     return "normal";
   }
 
-  if (
-    status.includes("お知らせ") ||
-    status.includes("情報")
-  ) {
+  if (status.includes("お知らせ") || status.includes("情報")) {
     return "information";
   }
 
@@ -235,9 +296,7 @@ const normalizeTrainInformationStatus = (
   return "unknown";
 };
 
-const getTrainInformationTitle = (
-  status: TrainInformationStatus,
-): string => {
+const getTrainInformationTitle = (status: TrainInformationStatus): string => {
   switch (status) {
     case "normal":
       return "정상 운행";
@@ -268,11 +327,7 @@ const getTrainInformationTitle = (
 export const jrEastProvider: RailwayProvider = {
   operator: "jr-east",
 
-  getTrains: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTrains: async ({ lineId, stationId, directionId }) => {
     console.log("[JR East Provider] getTrains", {
       lineId,
       stationId,
@@ -282,77 +337,42 @@ export const jrEastProvider: RailwayProvider = {
     return [];
   },
 
-  getTimetable: async ({
-    lineId,
-    stationId,
-    directionId,
-  }) => {
+  getTimetable: async ({ lineId, stationId, directionId }) => {
     const apiKey = process.env.ODPT_API_KEY;
 
     if (!apiKey) {
-      throw new Error(
-        "ODPT_API_KEY is not configured.",
-      );
+      throw new Error("ODPT_API_KEY is not configured.");
     }
 
     const railway = railwayMap[lineId];
 
     if (!railway) {
-      throw new Error(
-        `Unsupported JR East lineId: ${lineId}`,
-      );
+      throw new Error(`Unsupported JR East lineId: ${lineId}`);
     }
 
-const railwayName = railway.replace(
-  "odpt.Railway:",
-  "",
-);
+    const railwayName = railway.replace("odpt.Railway:", "");
 
-const stationName =
-  stationMaps[lineId]?.[stationId] ?? stationId;
+    const stationName = stationMaps[lineId]?.[stationId] ?? stationId;
 
-const station =
-  `odpt.Station:${railwayName}.${stationName}`;
+    const station = `odpt.Station:${railwayName}.${stationName}`;
 
-    const railDirection =
-      `odpt.RailDirection:${directionId}`;
+    const railDirection = `odpt.RailDirection:${directionId}`;
 
-    const calendar =
-      `odpt.Calendar:${getCalendar()}`;
+    const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:StationTimetable`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:JR-East",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:JR-East");
 
-    url.searchParams.set(
-      "odpt:railway",
-      railway,
-    );
+    url.searchParams.set("odpt:railway", railway);
 
-    url.searchParams.set(
-      "odpt:station",
-      station,
-    );
+    url.searchParams.set("odpt:station", station);
 
-    url.searchParams.set(
-      "odpt:railDirection",
-      railDirection,
-    );
+    url.searchParams.set("odpt:railDirection", railDirection);
 
-    url.searchParams.set(
-      "odpt:calendar",
-      calendar,
-    );
+    url.searchParams.set("odpt:calendar", calendar);
 
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
+    url.searchParams.set("acl:consumerKey", apiKey);
 
     const response = await fetch(url, {
       cache: "no-store",
@@ -361,129 +381,92 @@ const station =
     if (!response.ok) {
       const errorBody = await response.text();
 
-      console.error(
-        "[JR East Provider] timetable request failed",
-        {
-          status: response.status,
-          statusText: response.statusText,
-          railway,
-          station,
-          railDirection,
-          calendar,
-          errorBody,
-        },
-      );
+      console.error("[JR East Provider] timetable request failed", {
+        status: response.status,
+        statusText: response.statusText,
+        railway,
+        station,
+        railDirection,
+        calendar,
+        errorBody,
+      });
 
       throw new Error(
         `JR East timetable request failed: ${response.status} ${response.statusText} - ${errorBody}`,
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const data = (await response.json()) as OdptStationTimetable[];
 
-    const timetable: RailwayTimetable[] =
-      data.flatMap(
-        (
-          stationTimetable,
-          timetableIndex,
-        ) => {
-          const objects =
-            stationTimetable[
-              "odpt:stationTimetableObject"
-            ] ?? [];
+    const timetable: RailwayTimetable[] = data.flatMap(
+      (stationTimetable, timetableIndex) => {
+        const objects = stationTimetable["odpt:stationTimetableObject"] ?? [];
 
-          return objects.flatMap(
-            (item, itemIndex) => {
-              const departureTime =
-                item["odpt:departureTime"];
+        return objects.flatMap((item, itemIndex) => {
+          const departureTime = item["odpt:departureTime"];
 
-              if (!departureTime) {
-                return [];
-              }
+          if (!departureTime) {
+            return [];
+          }
 
-              const trainType =
-                getLastSegment(
-                  item["odpt:trainType"],
-                );
+          const trainType = getLastSegment(item["odpt:trainType"]);
 
-              const destinationStation =
-                getLastSegment(
-                  item[
-                    "odpt:destinationStation"
-                  ]?.[0],
-                );
-
-              const trainTypeName = trainType
-                ? jrEastTrainTypes[trainType]
-                : undefined;
-
-              const destinationName = destinationStation
-                ? jrEastStationNames[destinationStation]
-                : undefined;
-
-              return [
-                {
-                  id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
-                  operator: "jr-east",
-                  lineId,
-                  stationId,
-                  directionId,
-                  departureTime,
-                  trainType,
-                  trainTypeKo: trainTypeName?.ko,
-                  trainTypeJa: trainTypeName?.ja,
-                  trainNumber: item["odpt:trainNumber"],
-                  destinationStation,
-                  destinationKo: destinationName?.ko,
-                  destinationJa: destinationName?.ja,
-                },
-              ];
-            },
+          const destinationStation = getLastSegment(
+            item["odpt:destinationStation"]?.[0],
           );
-        },
-      );
+
+          const trainTypeName = trainType
+            ? jrEastTrainTypes[trainType]
+            : undefined;
+
+          const destinationName = destinationStation
+            ? jrEastStationNames[destinationStation]
+            : undefined;
+
+          return [
+            {
+              id: `jr-east-${lineId}-${stationId}-${directionId}-${departureTime}-${timetableIndex}-${itemIndex}`,
+              operator: "jr-east",
+              lineId,
+              stationId,
+              directionId,
+              departureTime,
+              trainType,
+              trainTypeKo: trainTypeName?.ko,
+              trainTypeJa: trainTypeName?.ja,
+              trainNumber: item["odpt:trainNumber"],
+              destinationStation,
+              destinationKo: destinationName?.ko,
+              destinationJa: destinationName?.ja,
+            },
+          ];
+        });
+      },
+    );
 
     return timetable;
   },
 
-  getTrainInformation: async ({
-    lineId,
-  }) => {
+  getTrainInformation: async ({ lineId }) => {
     const apiKey = process.env.ODPT_API_KEY;
 
     if (!apiKey) {
-      throw new Error(
-        "ODPT_API_KEY is not configured.",
-      );
+      throw new Error("ODPT_API_KEY is not configured.");
     }
 
     const railway = railwayMap[lineId];
 
     if (!railway) {
-      throw new Error(
-        `Unsupported JR East lineId: ${lineId}`,
-      );
+      throw new Error(`Unsupported JR East lineId: ${lineId}`);
     }
 
-    const url = new URL(
-      `${ODPT_API_BASE_URL}/odpt:TrainInformation`,
-    );
+    const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainInformation`);
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:JR-East",
-    );
+    url.searchParams.set("odpt:operator", "odpt.Operator:JR-East");
 
-    url.searchParams.set(
-      "odpt:railway",
-      railway,
-    );
+    url.searchParams.set("odpt:railway", railway);
 
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
+    url.searchParams.set("acl:consumerKey", apiKey);
 
     const response = await fetch(url, {
       cache: "no-store",
@@ -492,58 +475,43 @@ const station =
     if (!response.ok) {
       const errorBody = await response.text();
 
-      console.error(
-        "[JR East Provider] train information request failed",
-        {
-          status: response.status,
-          statusText: response.statusText,
-          railway,
-          errorBody,
-        },
-      );
+      console.error("[JR East Provider] train information request failed", {
+        status: response.status,
+        statusText: response.statusText,
+        railway,
+        errorBody,
+      });
 
       throw new Error(
         `JR East train information request failed: ${response.status} ${response.statusText} - ${errorBody}`,
       );
     }
 
-    const data =
-      (await response.json()) as OdptTrainInformation[];
+    const data = (await response.json()) as OdptTrainInformation[];
 
-    const information: RailwayTrainInformation[] =
-      data.map((item, index) => {
-        const rawStatus =
-          item["odpt:trainInformationStatus"];
+    const information: RailwayTrainInformation[] = data.map((item, index) => {
+      const rawStatus = item["odpt:trainInformationStatus"];
 
-        const message =
-          item["odpt:trainInformationText"] ?? "";
+      const message = item["odpt:trainInformationText"] ?? "";
 
-        const status =
-          normalizeTrainInformationStatus(
-            rawStatus,
-            message,
-          );
+      const status = normalizeTrainInformationStatus(rawStatus, message);
 
-        return {
-          id:
-            item["owl:sameAs"] ??
-            item["@id"] ??
-            `jr-east-${lineId}-train-information-${index}`,
-          operator: "jr-east",
-          lineId,
-          status,
-          title: getTrainInformationTitle(status),
-          message,
-          cause:
-            item["odpt:trainInformationCause"],
-          affectedSection:
-            item["odpt:trainInformationRange"],
-          rawStatus,
-          updatedAt:
-            item["dc:date"] ??
-            item["dct:valid"],
-        };
-      });
+      return {
+        id:
+          item["owl:sameAs"] ??
+          item["@id"] ??
+          `jr-east-${lineId}-train-information-${index}`,
+        operator: "jr-east",
+        lineId,
+        status,
+        title: getTrainInformationTitle(status),
+        message,
+        cause: item["odpt:trainInformationCause"],
+        affectedSection: item["odpt:trainInformationRange"],
+        rawStatus,
+        updatedAt: item["dc:date"] ?? item["dct:valid"],
+      };
+    });
 
     return information;
   },
