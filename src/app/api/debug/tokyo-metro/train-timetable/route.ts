@@ -20,11 +20,25 @@ type OdptTrainTimetable = {
 };
 
 const RAILWAY = "odpt.Railway:TokyoMetro.Ginza";
+const ASAKUSA_DIRECTION = "odpt.RailDirection:TokyoMetro.Asakusa";
 const KANDA = "odpt.Station:TokyoMetro.Ginza.Kanda";
 const ASAKUSA = "odpt.Station:TokyoMetro.Ginza.Asakusa";
 
-const hasStation = (items: OdptTrainTimetableObject[], station: string) =>
-  items.some(
+const stationIndex = (
+  items: OdptTrainTimetableObject[],
+  station: string,
+): number =>
+  items.findIndex(
+    (item) =>
+      item["odpt:arrivalStation"] === station ||
+      item["odpt:departureStation"] === station,
+  );
+
+const findStationObject = (
+  items: OdptTrainTimetableObject[],
+  station: string,
+): OdptTrainTimetableObject | undefined =>
+  items.find(
     (item) =>
       item["odpt:arrivalStation"] === station ||
       item["odpt:departureStation"] === station,
@@ -42,14 +56,19 @@ export const GET = async () => {
     }
 
     const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainTimetable`);
+
     url.searchParams.set("odpt:operator", "odpt.Operator:TokyoMetro");
     url.searchParams.set("odpt:railway", RAILWAY);
+    url.searchParams.set("odpt:railDirection", ASAKUSA_DIRECTION);
     url.searchParams.set("acl:consumerKey", apiKey);
 
-    const response = await fetch(url, { cache: "no-store" });
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       const body = await response.text();
+
       return NextResponse.json(
         {
           error: "Tokyo Metro TrainTimetable request failed.",
@@ -63,61 +82,98 @@ export const GET = async () => {
 
     const data = (await response.json()) as OdptTrainTimetable[];
 
+    const seen = new Set<string>();
+
     const trains = data
       .map((train) => {
-        const items = train["odpt:trainTimetableObject"] ?? [];
-
-        if (!hasStation(items, KANDA) || !hasStation(items, ASAKUSA)) {
+        if (train["odpt:railDirection"] !== ASAKUSA_DIRECTION) {
           return null;
         }
 
-        const kanda = items.find(
-          (item) =>
-            item["odpt:departureStation"] === KANDA ||
-            item["odpt:arrivalStation"] === KANDA,
-        );
+        const items = train["odpt:trainTimetableObject"] ?? [];
 
-        const asakusa = items.find(
-          (item) =>
-            item["odpt:arrivalStation"] === ASAKUSA ||
-            item["odpt:departureStation"] === ASAKUSA,
-        );
+        const kandaIndex = stationIndex(items, KANDA);
+        const asakusaIndex = stationIndex(items, ASAKUSA);
+
+        // G13 Kanda가 G19 Asakusa보다 실제 운행 순서상 앞에 있어야 한다.
+        if (
+          kandaIndex < 0 ||
+          asakusaIndex < 0 ||
+          kandaIndex >= asakusaIndex
+        ) {
+          return null;
+        }
+
+        const kanda = findStationObject(items, KANDA);
+        const asakusa = findStationObject(items, ASAKUSA);
 
         const departureTime =
-          kanda?.["odpt:departureTime"] ?? kanda?.["odpt:arrivalTime"];
+          kanda?.["odpt:departureTime"] ??
+          kanda?.["odpt:arrivalTime"];
 
+        // 종착역 데이터가 departureTime 형태로 오는 경우도 확인용으로 허용한다.
         const arrivalTime =
-          asakusa?.["odpt:arrivalTime"] ?? asakusa?.["odpt:departureTime"];
+          asakusa?.["odpt:arrivalTime"] ??
+          asakusa?.["odpt:departureTime"];
 
-        if (!departureTime || !arrivalTime) return null;
+        if (!departureTime || !arrivalTime) {
+          return null;
+        }
+
+        const trainNumber = train["odpt:trainNumber"] ?? "unknown";
+        const dedupeKey = `${trainNumber}|${departureTime}|${arrivalTime}`;
+
+        if (seen.has(dedupeKey)) {
+          return null;
+        }
+
+        seen.add(dedupeKey);
 
         return {
           trainNumber: train["odpt:trainNumber"],
           railDirection: train["odpt:railDirection"],
           trainType: train["odpt:trainType"],
           destinationStation: train["odpt:destinationStation"],
-          kanda: { departureTime, raw: kanda },
-          asakusa: { arrivalTime, raw: asakusa },
+          departure: {
+            station: "G13 Kanda",
+            time: departureTime,
+            raw: kanda,
+          },
+          arrival: {
+            station: "G19 Asakusa",
+            time: arrivalTime,
+            raw: asakusa,
+          },
         };
       })
-      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .filter(
+        (item): item is NonNullable<typeof item> =>
+          item !== null,
+      )
       .sort((a, b) =>
-        a.kanda.departureTime.localeCompare(b.kanda.departureTime),
+        a.departure.time.localeCompare(b.departure.time),
       );
 
     return NextResponse.json({
       debug: "Tokyo Metro Ginza G13 Kanda -> G19 Asakusa",
       railway: RAILWAY,
+      railDirection: ASAKUSA_DIRECTION,
       totalTrainTimetables: data.length,
       matchedTrains: trains.length,
       trains,
     });
   } catch (error) {
-    console.error("[Tokyo Metro TrainTimetable Debug API]", error);
+    console.error(
+      "[Tokyo Metro TrainTimetable Debug API]",
+      error,
+    );
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Unknown error",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown error",
       },
       { status: 500 },
     );
