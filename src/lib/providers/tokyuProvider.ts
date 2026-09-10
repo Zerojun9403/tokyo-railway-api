@@ -253,57 +253,74 @@ export const tokyuProvider: RailwayProvider = {
     const railDirection = `odpt.RailDirection:${directionId}`;
     const calendar = `odpt.Calendar:${getCalendar()}`;
 
-    const url = new URL(
+    /*
+     * CULLINAN 도큐:
+     * StationTimetable은 기존처럼 먼저 조회한다.
+     * 여기서 실제 ODPT가 인정하는 canonical station ID를 얻는다.
+     */
+    const stationUrl = new URL(
       `${ODPT_API_BASE_URL}/odpt:StationTimetable`,
     );
 
-    url.searchParams.set(
-      "odpt:operator",
-      "odpt.Operator:Tokyu",
-    );
+    stationUrl.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
+    stationUrl.searchParams.set("odpt:railway", railway);
+    stationUrl.searchParams.set("odpt:station", station);
+    stationUrl.searchParams.set("odpt:railDirection", railDirection);
+    stationUrl.searchParams.set("odpt:calendar", calendar);
+    stationUrl.searchParams.set("acl:consumerKey", apiKey);
 
-    url.searchParams.set("odpt:railway", railway);
-    url.searchParams.set("odpt:station", station);
-
-    url.searchParams.set(
-      "odpt:railDirection",
+    console.log("[Tokyu StationTimetable Request]", {
+      lineId,
+      stationId,
+      directionId,
+      railway,
+      station,
       railDirection,
-    );
-
-    url.searchParams.set(
-      "odpt:calendar",
       calendar,
-    );
+      url: stationUrl.toString().replace(apiKey, "[REDACTED]"),
+    });
 
-    url.searchParams.set(
-      "acl:consumerKey",
-      apiKey,
-    );
+    const stationResponse = await fetch(stationUrl, { cache: "no-store" });
 
-    const response = await fetch(url);
+    if (!stationResponse.ok) {
+      const body = await stationResponse.text();
 
-    if (!response.ok) {
       throw new Error(
-        `Tokyu timetable request failed: ${response.status} ${response.statusText}`,
+        `Tokyu StationTimetable request failed: ${stationResponse.status} ${stationResponse.statusText} - ${body}`,
       );
     }
 
-    const data =
-      (await response.json()) as OdptStationTimetable[];
+    const stationData =
+      (await stationResponse.json()) as OdptStationTimetable[];
 
-    // CULLINAN은 출발역/도착역에서 같은 실제 열차를 연결해야 한다.
-    // Tokyu StationTimetable에는 trainNumber가 없는 경우가 있으므로
-    // TrainTimetable을 우선 사용한다. 이 방식은 종착역 도착 시각도 처리한다.
     const canonicalStation =
-      data[0]?.["odpt:station"] ?? station;
+      stationData[0]?.["odpt:station"] ?? station;
 
+    /*
+     * 핵심 수정:
+     * challenge ODPT의 TrainTimetable은 operator/railway/direction을
+     * 한꺼번에 넣은 복합 검색이 실패할 수 있으므로 railway 하나로 조회한 뒤
+     * 서버에서 direction + station을 필터링한다.
+     *
+     * 이 방식이면 trainNumber를 확보할 수 있고,
+     * DT27 같은 종착역은 departureTime 대신 arrivalTime도 사용할 수 있다.
+     */
     const trainUrl = new URL(
       `${ODPT_API_BASE_URL}/odpt:TrainTimetable`,
     );
-    trainUrl.searchParams.set("odpt:operator", "odpt.Operator:Tokyu");
+
     trainUrl.searchParams.set("odpt:railway", railway);
-    trainUrl.searchParams.set("odpt:railDirection", railDirection);
     trainUrl.searchParams.set("acl:consumerKey", apiKey);
+
+    console.log("[Tokyu TrainTimetable Request]", {
+      lineId,
+      stationId,
+      directionId,
+      railway,
+      canonicalStation,
+      railDirection,
+      url: trainUrl.toString().replace(apiKey, "[REDACTED]"),
+    });
 
     const trainResponse = await fetch(trainUrl, { cache: "no-store" });
 
@@ -313,7 +330,10 @@ export const tokyuProvider: RailwayProvider = {
 
       const trainTimetable: RailwayTimetable[] = trainData.flatMap(
         (train, trainIndex) => {
-          if (train["odpt:railDirection"] !== railDirection) {
+          if (
+            train["odpt:railDirection"] &&
+            train["odpt:railDirection"] !== railDirection
+          ) {
             return [];
           }
 
@@ -348,21 +368,23 @@ export const tokyuProvider: RailwayProvider = {
             ? tokyuStationNames[destinationStation]
             : undefined;
 
-          return [{
-            id: `tokyu-${lineId}-${stationId}-${directionId}-${stationTime}-train-${trainIndex}`,
-            operator: "tokyu",
-            lineId,
-            stationId,
-            directionId,
-            departureTime: stationTime,
-            trainNumber: train["odpt:trainNumber"],
-            trainType,
-            trainTypeKo: trainTypeName?.ko,
-            trainTypeJa: trainTypeName?.ja,
-            destinationStation,
-            destinationKo: destinationName?.ko,
-            destinationJa: destinationName?.ja,
-          }];
+          return [
+            {
+              id: `tokyu-${lineId}-${stationId}-${directionId}-${stationTime}-train-${trainIndex}`,
+              operator: "tokyu",
+              lineId,
+              stationId,
+              directionId,
+              departureTime: stationTime,
+              trainNumber: train["odpt:trainNumber"],
+              trainType,
+              trainTypeKo: trainTypeName?.ko,
+              trainTypeJa: trainTypeName?.ja,
+              destinationStation,
+              destinationKo: destinationName?.ko,
+              destinationJa: destinationName?.ja,
+            },
+          ];
         },
       );
 
@@ -371,37 +393,61 @@ export const tokyuProvider: RailwayProvider = {
           a.departureTime.localeCompare(b.departureTime),
         );
 
+        console.log("[Tokyu TrainTimetable Result]", {
+          lineId,
+          stationId,
+          directionId,
+          records: trainTimetable.length,
+          withTrainNumber: trainTimetable.filter(
+            (item) => Boolean(item.trainNumber),
+          ).length,
+        });
+
         return trainTimetable;
       }
+
+      console.warn("[Tokyu TrainTimetable Empty]", {
+        lineId,
+        stationId,
+        directionId,
+        rawTrainRecords: trainData.length,
+        canonicalStation,
+      });
+    } else {
+      const body = await trainResponse.text();
+
+      console.error("[Tokyu TrainTimetable Failed]", {
+        lineId,
+        stationId,
+        directionId,
+        status: trainResponse.status,
+        body,
+      });
     }
 
-    const timetable: RailwayTimetable[] = data.flatMap(
+    /*
+     * TrainTimetable을 사용할 수 없는 경우 기존 StationTimetable으로
+     * 안전하게 fallback한다. trainNumber가 제공되면 그대로 보존한다.
+     */
+    const timetable: RailwayTimetable[] = stationData.flatMap(
       (stationTimetable, timetableIndex) => {
         const objects =
-          stationTimetable["odpt:stationTimetableObject"] ??
-          [];
+          stationTimetable["odpt:stationTimetableObject"] ?? [];
 
         return objects.flatMap((item, itemIndex) => {
-          const departureTime =
-            item["odpt:departureTime"];
+          const departureTime = item["odpt:departureTime"];
 
           if (!departureTime) {
             return [];
           }
 
-          const trainType =
-            getLastSegment(item["odpt:trainType"]);
-
+          const trainType = getLastSegment(item["odpt:trainType"]);
           const trainTypeName = trainType
             ? tokyuTrainTypes[trainType]
             : undefined;
 
-          const destinationStationFull =
-            item["odpt:destinationStation"]?.[0];
-
           const destinationStation =
-            getLastSegment(destinationStationFull);
-
+            getLastSegment(item["odpt:destinationStation"]?.[0]);
           const destinationName = destinationStation
             ? tokyuStationNames[destinationStation]
             : undefined;
@@ -414,6 +460,7 @@ export const tokyuProvider: RailwayProvider = {
               stationId,
               directionId,
               departureTime,
+              trainNumber: item["odpt:trainNumber"],
               trainType,
               trainTypeKo: trainTypeName?.ko,
               trainTypeJa: trainTypeName?.ja,
@@ -424,6 +471,10 @@ export const tokyuProvider: RailwayProvider = {
           ];
         });
       },
+    );
+
+    timetable.sort((a, b) =>
+      a.departureTime.localeCompare(b.departureTime),
     );
 
     return timetable;
