@@ -224,6 +224,19 @@ type OdptStationTimetable = {
   "odpt:stationTimetableObject"?: OdptStationTimetableObject[];
 };
 
+type OdptTrainTimetableObject = {
+  "odpt:arrivalTime"?: string;
+  "odpt:departureTime"?: string;
+  "odpt:arrivalStation"?: string;
+  "odpt:departureStation"?: string;
+};
+
+type OdptTrainTimetable = {
+  "odpt:trainNumber"?: string;
+  "odpt:railDirection"?: string;
+  "odpt:trainTimetableObject"?: OdptTrainTimetableObject[];
+};
+
 type OdptTrainInformation = {
   "@id"?: string;
   "owl:sameAs"?: string;
@@ -346,6 +359,100 @@ const getTrainInformationTitle = (status: TrainInformationStatus): string => {
   }
 };
 
+const getTerminalArrivalTimetable = async ({
+  apiKey,
+  railway,
+  station,
+  railDirection,
+  lineId,
+  stationId,
+  directionId,
+}: {
+  apiKey: string;
+  railway: string;
+  station: string;
+  railDirection: string;
+  lineId: string;
+  stationId: string;
+  directionId: string;
+}): Promise<RailwayTimetable[]> => {
+  const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainTimetable`);
+
+  url.searchParams.set("odpt:operator", "odpt.Operator:JR-East");
+  url.searchParams.set("odpt:railway", railway);
+  url.searchParams.set("odpt:railDirection", railDirection);
+  url.searchParams.set("acl:consumerKey", apiKey);
+
+  console.log("[JR East Provider] TrainTimetable fallback request", {
+    lineId,
+    stationId,
+    station,
+    directionId,
+    railDirection,
+  });
+
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `JR East TrainTimetable request failed: ${response.status} ${response.statusText} - ${errorBody}`,
+    );
+  }
+
+  const data = (await response.json()) as OdptTrainTimetable[];
+  const seen = new Set<string>();
+
+  const timetable: RailwayTimetable[] = data.flatMap((train, trainIndex) => {
+    if (train["odpt:railDirection"] !== railDirection) return [];
+
+    const trainNumber = train["odpt:trainNumber"];
+    const objects = train["odpt:trainTimetableObject"] ?? [];
+
+    const stationObject = objects.find(
+      (item) =>
+        item["odpt:arrivalStation"] === station ||
+        item["odpt:departureStation"] === station,
+    );
+
+    if (!stationObject) return [];
+
+    const arrivalTime =
+      stationObject["odpt:arrivalTime"] ?? stationObject["odpt:departureTime"];
+
+    if (!arrivalTime) return [];
+
+    const dedupeKey = `${trainNumber ?? "unknown"}|${arrivalTime}`;
+    if (seen.has(dedupeKey)) return [];
+    seen.add(dedupeKey);
+
+    return [
+      {
+        id:
+          `jr-east-${lineId}-${stationId}-` +
+          `${directionId}-${arrivalTime}-train-${trainIndex}`,
+        operator: "jr-east",
+        lineId,
+        stationId,
+        directionId,
+        departureTime: arrivalTime,
+        trainNumber,
+      },
+    ];
+  });
+
+  timetable.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+
+  console.log("[JR East Provider] TrainTimetable fallback result", {
+    lineId,
+    stationId,
+    directionId,
+    count: timetable.length,
+  });
+
+  return timetable;
+};
+
 export const jrEastProvider: RailwayProvider = {
   operator: "jr-east",
 
@@ -466,7 +573,23 @@ export const jrEastProvider: RailwayProvider = {
       },
     );
 
-    return timetable;
+    if (timetable.length > 0) {
+      return timetable;
+    }
+
+    /*
+     * 종착역은 같은 방향의 StationTimetable 출발 데이터가 비어 있을 수 있다.
+     * 이 경우 TrainTimetable에서 해당 역의 실제 arrivalTime을 사용한다.
+     */
+    return getTerminalArrivalTimetable({
+      apiKey,
+      railway,
+      station,
+      railDirection,
+      lineId,
+      stationId,
+      directionId,
+    });
   },
 
   getTrainInformation: async ({ lineId }) => {
