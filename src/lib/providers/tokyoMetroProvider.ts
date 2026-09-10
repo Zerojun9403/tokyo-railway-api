@@ -334,6 +334,19 @@ type OdptStationTimetable = {
   "odpt:stationTimetableObject"?: OdptStationTimetableObject[];
 };
 
+type OdptTrainTimetableObject = {
+  "odpt:arrivalTime"?: string;
+  "odpt:departureTime"?: string;
+  "odpt:arrivalStation"?: string;
+  "odpt:departureStation"?: string;
+};
+
+type OdptTrainTimetable = {
+  "odpt:trainNumber"?: string;
+  "odpt:railDirection"?: string;
+  "odpt:trainTimetableObject"?: OdptTrainTimetableObject[];
+};
+
 type OdptTrainInformationText = {
   ja?: string;
   en?: string;
@@ -418,6 +431,111 @@ const getRailDirection = (lineId: string, directionId: string): string => {
   }
 
   return direction;
+};
+
+const getTerminalArrivalTimetable = async ({
+  apiKey,
+  railway,
+  station,
+  railDirection,
+  lineId,
+  stationId,
+  directionId,
+}: {
+  apiKey: string;
+  railway: string;
+  station: string;
+  railDirection: string;
+  lineId: string;
+  stationId: string;
+  directionId: string;
+}): Promise<RailwayTimetable[]> => {
+  const url = new URL(`${ODPT_API_BASE_URL}/odpt:TrainTimetable`);
+
+  url.searchParams.set("odpt:operator", "odpt.Operator:TokyoMetro");
+  url.searchParams.set("odpt:railway", railway);
+  url.searchParams.set("odpt:railDirection", railDirection);
+  url.searchParams.set("acl:consumerKey", apiKey);
+
+  console.log("[Tokyo Metro Provider] TrainTimetable fallback request", {
+    lineId,
+    stationId,
+    station,
+    directionId,
+    railDirection,
+  });
+
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(
+      `Tokyo Metro TrainTimetable request failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = (await response.json()) as OdptTrainTimetable[];
+
+  const seen = new Set<string>();
+
+  const timetable: RailwayTimetable[] = data.flatMap((train, trainIndex) => {
+    if (train["odpt:railDirection"] !== railDirection) {
+      return [];
+    }
+
+    const trainNumber = train["odpt:trainNumber"];
+    const objects = train["odpt:trainTimetableObject"] ?? [];
+
+    const stationObject = objects.find(
+      (item) =>
+        item["odpt:arrivalStation"] === station ||
+        item["odpt:departureStation"] === station,
+    );
+
+    if (!stationObject) {
+      return [];
+    }
+
+    const arrivalTime =
+      stationObject["odpt:arrivalTime"] ??
+      stationObject["odpt:departureTime"];
+
+    if (!arrivalTime) {
+      return [];
+    }
+
+    const dedupeKey = `${trainNumber ?? "unknown"}|${arrivalTime}`;
+
+    if (seen.has(dedupeKey)) {
+      return [];
+    }
+
+    seen.add(dedupeKey);
+
+    return [
+      {
+        id:
+          `tokyo-metro-${lineId}-${stationId}-` +
+          `${directionId}-${arrivalTime}-train-${trainIndex}`,
+        operator: "tokyo-metro",
+        lineId,
+        stationId,
+        directionId,
+        departureTime: arrivalTime,
+        trainNumber,
+      },
+    ];
+  });
+
+  timetable.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+
+  console.log("[Tokyo Metro Provider] TrainTimetable fallback result", {
+    lineId,
+    stationId,
+    directionId,
+    count: timetable.length,
+  });
+
+  return timetable;
 };
 
 const getJapaneseText = (
@@ -744,6 +862,25 @@ export const tokyoMetroProvider: RailwayProvider = {
       count: timetable.length,
     });
 
-    return timetable;
+    if (timetable.length > 0) {
+      return timetable;
+    }
+
+    /*
+     * 종착역은 같은 방향의 StationTimetable 출발 데이터가 비어 있을 수 있다.
+     * 이 경우 TrainTimetable에서 해당 역의 실제 arrivalTime을 사용한다.
+     *
+     * 일반 역은 기존 StationTimetable 로직을 그대로 유지하고,
+     * 빈 결과에 대해서만 보조 경로를 사용한다.
+     */
+    return getTerminalArrivalTimetable({
+      apiKey,
+      railway,
+      station,
+      railDirection,
+      lineId,
+      stationId,
+      directionId,
+    });
   },
 };
