@@ -199,15 +199,16 @@ const buildAirportPrompt = (airport: PhantomAirport): string | null => {
       ) {
         return [
           "다음은 SPECTRE가 제공한 확정 공항 안내 데이터다.",
-          "아래 정보만 사용해서 여행자에게 한국어로 짧고 명확하게 안내해줘.",
-          "입력에 없는 공항역, 터미널, 항공사, 체크인 카운터 정보를 만들거나 추측하지 마.",
+          "아래 정보만 사용해서 한국어로 매우 짧게 안내해줘.",
+          "설명문, 인사말, 주의사항, FIDS 안내는 출력하지 마.",
+          "Markdown 문법(**, *, #, -, 목록 기호 등)을 절대 사용하지 마.",
+          "입력에 없는 공항역, 터미널, 항공사 정보를 만들거나 추측하지 마.",
+          "반드시 아래 4줄만 그대로 읽기 쉬운 일반 텍스트 형식으로 출력해.",
           "",
-          `공항: ${guide.airportName} (${airport.airport})`,
-          `항공사: ${airport.airline.trim()}`,
-          `이용 철도역: ${group.station}`,
-          `터미널: ${terminal.terminal}`,
-          "",
-          "마지막에는 출발 당일 예약 정보와 공항 내 FIDS에서 체크인 카운터 및 터미널을 다시 확인하라고 안내해줘.",
+          `${guide.airportName} (${airport.airport})`,
+          `${airport.airline.trim()}`,
+          `${group.station}`,
+          `${terminal.terminal}`,
         ].join("\n");
       }
     }
