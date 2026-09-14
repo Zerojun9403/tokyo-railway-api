@@ -123,6 +123,20 @@ const buildJourneyPrompt = (journey: PhantomJourney) => {
   ].join("\n");
 };
 
+const buildJourneyQuestionPrompt = (
+  journey: PhantomJourney,
+  message: string,
+) => {
+  return [
+    buildJourneyPrompt(journey),
+    "",
+    "[사용자 질문]",
+    message.trim(),
+    "",
+    "위 CULLINAN 여정 정보만 사용해서 사용자의 질문에 답해줘.",
+    "질문에 필요한 정보가 위 여정에 없으면 추측하지 말고 확인할 수 없다고 말해줘.",
+  ].join("\n");
+};
 
 const AIRPORT_GUIDE = {
   NRT: {
@@ -268,7 +282,7 @@ async function handlePost(request: NextRequest) {
   let prompt: string;
   let mode: "message" | "journey" | "airport";
 
-  if (isValidJourney(journey)) {
+  if (isValidJourney(journey) && message) {
     prompt = buildJourneyPrompt(journey);
     mode = "journey";
   } else if (
