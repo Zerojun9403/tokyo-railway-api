@@ -283,10 +283,13 @@ async function handlePost(request: NextRequest) {
   let mode: "message" | "journey" | "airport";
 
   if (isValidJourney(journey) && message) {
-    prompt = buildJourneyPrompt(journey);
-    mode = "journey";
-  } else if (
-    airport &&
+  prompt = buildJourneyQuestionPrompt(journey, message);
+  mode = "message";
+} else if (isValidJourney(journey)) {
+  prompt = buildJourneyPrompt(journey);
+  mode = "journey";
+} else if (
+  airport &&
     (airport.airport === "NRT" || airport.airport === "HND") &&
     isNonEmptyString(airport.airline)
   ) {
