@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { parsePhantomIntent } from "./parseIntent";
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 const GEMINI_API_URL =
@@ -283,13 +284,13 @@ async function handlePost(request: NextRequest) {
   let mode: "message" | "journey" | "airport";
 
   if (isValidJourney(journey) && message) {
-  prompt = buildJourneyQuestionPrompt(journey, message);
-  mode = "message";
-} else if (isValidJourney(journey)) {
-  prompt = buildJourneyPrompt(journey);
-  mode = "journey";
-} else if (
-  airport &&
+    prompt = buildJourneyQuestionPrompt(journey, message);
+    mode = "journey";
+  } else if (isValidJourney(journey)) {
+    prompt = buildJourneyPrompt(journey);
+    mode = "journey";
+  } else if (
+    airport &&
     (airport.airport === "NRT" || airport.airport === "HND") &&
     isNonEmptyString(airport.airline)
   ) {
@@ -310,6 +311,27 @@ async function handlePost(request: NextRequest) {
     prompt = airportPrompt;
     mode = "airport";
   } else if (message) {
+    const intent = await parsePhantomIntent(
+      message,
+      apiKey,
+      GEMINI_API_URL,
+    );
+
+    if (intent.intent === "route") {
+      return NextResponse.json(
+        {
+          ok: true,
+          engine: "PHANTOM",
+          mode: "route-intent",
+          intent,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          headers: CORS_HEADERS,
+        },
+      );
+    }
+
     prompt = message;
     mode = "message";
   } else {
