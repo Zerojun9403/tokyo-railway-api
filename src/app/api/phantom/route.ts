@@ -285,6 +285,8 @@ async function handlePost(request: NextRequest) {
   const message = body.message?.trim();
   const journey = body.journey;
   const airport = body.airport;
+  
+  console.log("[PHANTOM Incoming Message]", JSON.stringify(message));
 
   let prompt: string;
   let mode: "message" | "journey" | "airport" | "station-last-train";
