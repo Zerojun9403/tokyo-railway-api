@@ -1,6 +1,7 @@
 export type PhantomIntentType =
   | "route"
   | "last-train"
+  | "station-last-train"
   | "weather"
   | "airport"
   | "journey"
@@ -17,6 +18,13 @@ export type PhantomLastTrainIntent = {
   departureStation: string;
   arrivalStation: string;
 };
+
+
+export type PhantomStationLastTrainIntent = {
+  intent: "station-last-train";
+  station: string;
+};
+
 
 export type PhantomWeatherIntent = {
   intent: "weather";
@@ -41,6 +49,7 @@ export type PhantomGeneralIntent = {
 export type PhantomIntent =
   | PhantomRouteIntent
   | PhantomLastTrainIntent
+  | PhantomStationLastTrainIntent
   | PhantomWeatherIntent
   | PhantomAirportIntent
   | PhantomJourneyIntent
@@ -66,6 +75,13 @@ export const isPhantomIntent = (
       candidate.arrivalStation.trim().length > 0
     );
   }
+
+  if (candidate.intent === "station-last-train") {
+    return (
+      typeof candidate.station === "string" &&
+      candidate.station.trim().length > 0
+    );
+  } 
 
   if (candidate.intent === "weather") {
     return (

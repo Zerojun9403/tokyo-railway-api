@@ -317,7 +317,52 @@ async function handlePost(request: NextRequest) {
       GEMINI_API_URL,
     );
 
-   if (intent.intent === "weather") {
+if (intent.intent === "route") {
+  return NextResponse.json(
+    {
+      ok: true,
+      engine: "PHANTOM",
+      mode: "route-intent",
+      intent,
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      headers: CORS_HEADERS,
+    },
+  );
+}
+
+if (intent.intent === "last-train") {
+  return NextResponse.json(
+    {
+      ok: true,
+      engine: "PHANTOM",
+      mode: "last-train-intent",
+      intent,
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      headers: CORS_HEADERS,
+    },
+  );
+}
+
+if (intent.intent === "station-last-train") {
+  return NextResponse.json(
+    {
+      ok: true,
+      engine: "PHANTOM",
+      mode: "station-last-train-intent",
+      intent,
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      headers: CORS_HEADERS,
+    },
+  );
+}
+
+if (intent.intent === "weather") {
   return NextResponse.json(
     {
       ok: true,
@@ -331,7 +376,6 @@ async function handlePost(request: NextRequest) {
     },
   );
 }
-
     prompt = message;
     mode = "message";
   } else {
