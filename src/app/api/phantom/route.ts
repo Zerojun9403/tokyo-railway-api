@@ -288,8 +288,8 @@ async function handlePost(request: NextRequest) {
   
   console.log("[PHANTOM Incoming Message]", JSON.stringify(message));
 
-  let prompt: string;
-  let mode: "message" | "journey" | "airport" | "station-last-train";
+  let prompt: string = message ?? "";
+  let mode: "message" | "journey" | "airport" | "station-last-train" = "message";
 
   if (isValidJourney(journey) && message) {
     prompt = buildJourneyQuestionPrompt(journey, message);
@@ -527,8 +527,10 @@ if (intent.intent === "weather") {
     },
   );
 }
-    prompt = message;
-    mode = "message";
+if (intent.intent !== "station-last-train") {
+  prompt = message;
+  mode = "message";
+}
   } else {
     return NextResponse.json(
       {
