@@ -317,20 +317,20 @@ async function handlePost(request: NextRequest) {
       GEMINI_API_URL,
     );
 
-    if (intent.intent === "route") {
-      return NextResponse.json(
-        {
-          ok: true,
-          engine: "PHANTOM",
-          mode: "route-intent",
-          intent,
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          headers: CORS_HEADERS,
-        },
-      );
-    }
+   if (intent.intent === "weather") {
+  return NextResponse.json(
+    {
+      ok: true,
+      engine: "PHANTOM",
+      mode: "weather-intent",
+      intent,
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      headers: CORS_HEADERS,
+    },
+  );
+}
 
     prompt = message;
     mode = "message";
