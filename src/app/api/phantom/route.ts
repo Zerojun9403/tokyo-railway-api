@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { findLastTrain } from "@/lib/lastTrain/findLastTrain";
+import { normalizeLastTrainRequest } from "@/lib/lastTrain/normalizeLastTrainRequest";
+import { STATION_LAST_TRAIN_REGISTRY } from "@/lib/lastTrain/stationLineRegistry";
+import { getProvider } from "@/lib/providers/providerRegistry";
+
 import { parsePhantomIntent } from "./parseIntent";
 
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
@@ -281,7 +287,7 @@ async function handlePost(request: NextRequest) {
   const airport = body.airport;
 
   let prompt: string;
-  let mode: "message" | "journey" | "airport";
+  let mode: "message" | "journey" | "airport" | "station-last-train";
 
   if (isValidJourney(journey) && message) {
     prompt = buildJourneyQuestionPrompt(journey, message);
@@ -348,18 +354,161 @@ if (intent.intent === "last-train") {
 }
 
 if (intent.intent === "station-last-train") {
-  return NextResponse.json(
-    {
-      ok: true,
-      engine: "PHANTOM",
-      mode: "station-last-train-intent",
-      intent,
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      headers: CORS_HEADERS,
-    },
+  /*
+   * =======================================================
+   * Resolve Station
+   * =======================================================
+   *
+   * PHANTOM parser가 반환한 역 이름을
+   * station-last-train registry의 canonical station으로 찾는다.
+   *
+   * 현재는 등록된 역의 한국어 / 일본어 / 영어 이름과
+   * stationKey를 기준으로 매칭한다.
+   */
+
+  const stationQuery = intent.station.trim().toLowerCase();
+
+  const station = STATION_LAST_TRAIN_REGISTRY.find((item) => {
+    const candidates = [
+      item.stationKey,
+      item.nameKo,
+      item.nameJa,
+      item.nameEn,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => value.trim().toLowerCase());
+
+    return candidates.includes(stationQuery);
+  });
+
+  if (!station) {
+    return NextResponse.json(
+      {
+        ok: false,
+        engine: "PHANTOM",
+        mode: "station-last-train",
+        error: `Station is not registered: ${intent.station}`,
+      },
+      {
+        status: 404,
+        headers: CORS_HEADERS,
+      },
+    );
+  }
+
+  /*
+   * =======================================================
+   * Collect Verified Last Trains
+   * =======================================================
+   */
+
+  const lines = await Promise.all(
+    station.lines.map(async (line) => {
+      const directions = await Promise.all(
+        line.directions.map(async (direction) => {
+          try {
+            const normalized = normalizeLastTrainRequest({
+              operator: line.operator,
+              lineId: line.lineId,
+              stationId: line.stationId,
+              directionId: direction.directionId,
+            });
+
+            const provider = getProvider(line.operator);
+
+            if (!provider?.getTimetable) {
+              return {
+                directionKo: direction.directionKo,
+                directionJa: direction.directionJa,
+                found: false,
+                lastTrain: null,
+              };
+            }
+
+            const timetable = await provider.getTimetable({
+              operator: normalized.operator,
+              lineId: normalized.lineId,
+              stationId: normalized.stationId,
+              directionId: normalized.directionId,
+            });
+
+            const lastTrain = findLastTrain(timetable);
+
+            if (!lastTrain) {
+              return {
+                directionKo: direction.directionKo,
+                directionJa: direction.directionJa,
+                found: false,
+                lastTrain: null,
+              };
+            }
+
+            return {
+              directionKo: direction.directionKo,
+              directionJa: direction.directionJa,
+              found: true,
+              lastTrain: {
+                departureTime: lastTrain.departureTime,
+                trainTypeKo: lastTrain.trainTypeKo,
+                trainTypeJa: lastTrain.trainTypeJa,
+                destinationKo: lastTrain.destinationKo,
+                destinationJa: lastTrain.destinationJa,
+              },
+            };
+          } catch (error) {
+            console.error(
+              `[PHANTOM Station Last Train Error] ${line.operator} ${line.lineId} ${direction.directionId}`,
+              error,
+            );
+
+            return {
+              directionKo: direction.directionKo,
+              directionJa: direction.directionJa,
+              found: false,
+              lastTrain: null,
+            };
+          }
+        }),
+      );
+
+      return {
+        operator: line.operator,
+        lineNameKo: line.lineNameKo,
+        lineNameJa: line.lineNameJa,
+        directions,
+      };
+    }),
   );
+
+  /*
+   * =======================================================
+   * Build PHANTOM Prompt
+   * =======================================================
+   *
+   * Gemini는 막차 정보를 계산하지 않는다.
+   * Provider에서 검증된 결과를 사용자에게 설명만 한다.
+   */
+
+  prompt =
+    `사용자가 "${message}"라고 질문했다.\n\n` +
+    `아래는 ${station.nameKo}역의 철도 시간표에서 확인한 막차 정보다.\n` +
+    `이 데이터에 있는 정보만 사용해서 답변해라.\n` +
+    `방향명과 실제 막차 종착역은 서로 다를 수 있으므로 구분해서 설명해라.\n` +
+    `found가 false인 방향은 막차 시각을 추측하지 마라.\n` +
+    `여러 노선이 있으므로 노선별로 짧고 읽기 쉽게 정리해라.\n\n` +
+    JSON.stringify(
+      {
+        station: {
+          nameKo: station.nameKo,
+          nameJa: station.nameJa,
+        },
+        lines,
+      },
+      null,
+      2,
+    );
+
+  mode = "station-last-train";
 }
 
 if (intent.intent === "weather") {
