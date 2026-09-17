@@ -139,6 +139,8 @@ export const parsePhantomIntent = async (
       .join("")
       .trim() ?? "";
 
+  console.log("[PHANTOM Intent Raw]", JSON.stringify(text));
+  
   if (!text) {
     throw new Error("PHANTOM intent response is empty");
   }
