@@ -48,14 +48,72 @@ type OpenMeteoForecastResponse = {
   daily?: OpenMeteoDailyResponse;
 };
 
+/*
+ * =======================================================
+ * Weather Location Aliases
+ * =======================================================
+ *
+ * PHANTOM은 사용자가 입력한 한국어 지명을 그대로 유지한다.
+ *
+ * Open-Meteo geocoding은 한국어 지명을 안정적으로 찾지 못할 수 있으므로
+ * 자주 사용하는 도쿄 지역은 검색용 영문 지명으로 변환한다.
+ *
+ * 이 값은 날씨를 생성하거나 추측하기 위한 데이터가 아니다.
+ * 실제 좌표와 날씨 데이터는 Open-Meteo에서 가져온다.
+ */
+
+const WEATHER_LOCATION_ALIASES: Record<string, string> = {
+  도쿄: "Tokyo",
+  동경: "Tokyo",
+  東京: "Tokyo",
+
+  신주쿠: "Shinjuku",
+  新宿: "Shinjuku",
+
+  시부야: "Shibuya",
+  渋谷: "Shibuya",
+
+  아사쿠사: "Asakusa",
+  浅草: "Asakusa",
+
+  우에노: "Ueno",
+  上野: "Ueno",
+
+  이케부쿠로: "Ikebukuro",
+  池袋: "Ikebukuro",
+
+  긴자: "Ginza",
+  銀座: "Ginza",
+
+  아키하바라: "Akihabara",
+  秋葉原: "Akihabara",
+
+  오다이바: "Odaiba",
+  お台場: "Odaiba",
+
+  도쿄역: "Tokyo",
+  東京駅: "Tokyo",
+};
+
+const normalizeWeatherLocationQuery = (
+  location: string,
+): string => {
+  const query = location.trim();
+
+  return WEATHER_LOCATION_ALIASES[query] ?? query;
+};
+
 export const resolveWeatherLocation = async (
   location: string,
 ): Promise<WeatherLocation | null> => {
-  const query = location.trim();
+  const originalQuery = location.trim();
 
-  if (!query) {
+  if (!originalQuery) {
     return null;
   }
+
+  const query =
+    normalizeWeatherLocationQuery(originalQuery);
 
   const url = new URL(OPEN_METEO_GEOCODING_URL);
 
@@ -90,7 +148,7 @@ export const resolveWeatherLocation = async (
   }
 
   return {
-    name: result.name ?? query,
+    name: result.name ?? originalQuery,
     latitude: result.latitude,
     longitude: result.longitude,
     timezone: result.timezone ?? "Asia/Tokyo",
