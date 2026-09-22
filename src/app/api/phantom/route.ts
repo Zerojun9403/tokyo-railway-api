@@ -4,6 +4,10 @@ import { findLastTrain } from "@/lib/lastTrain/findLastTrain";
 import { normalizeLastTrainRequest } from "@/lib/lastTrain/normalizeLastTrainRequest";
 import { STATION_LAST_TRAIN_REGISTRY } from "@/lib/lastTrain/stationLineRegistry";
 import { getProvider } from "@/lib/providers/providerRegistry";
+import {
+  getWeatherForecast,
+  resolveWeatherLocation,
+} from "@/lib/weather/weatherProvider";
 
 import { parsePhantomIntent } from "./parseIntent";
 
@@ -289,7 +293,12 @@ async function handlePost(request: NextRequest) {
 
 
   let prompt: string = message ?? "";
-  let mode: "message" | "journey" | "airport" | "station-last-train" = "message";
+  let mode:
+    | "message"
+    | "journey"
+    | "airport"
+    | "station-last-train"
+    | "weather" = "message";
 
   if (isValidJourney(journey) && message) {
     prompt = buildJourneyQuestionPrompt(journey, message);
@@ -514,23 +523,75 @@ if (intent.intent === "station-last-train") {
 }
 
 if (intent.intent === "weather") {
-  return NextResponse.json(
-    {
-      ok: true,
-      engine: "PHANTOM",
-      mode: "weather-intent",
-      intent,
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      headers: CORS_HEADERS,
-    },
+  const weatherLocation = await resolveWeatherLocation(
+    intent.location,
   );
+
+  if (!weatherLocation) {
+    return NextResponse.json(
+      {
+        ok: false,
+        engine: "PHANTOM",
+        mode: "weather",
+        error: `Weather location was not found: ${intent.location}`,
+      },
+      {
+        status: 404,
+        headers: CORS_HEADERS,
+      },
+    );
+  }
+
+  const forecast = await getWeatherForecast(
+    weatherLocation,
+  );
+
+  if (forecast.length === 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        engine: "PHANTOM",
+        mode: "weather",
+        error: `Weather forecast was not found: ${intent.location}`,
+      },
+      {
+        status: 502,
+        headers: CORS_HEADERS,
+      },
+    );
+  }
+
+  prompt =
+    `사용자가 "${message}"라고 질문했다.\n\n` +
+    `아래는 Open-Meteo에서 확인한 실제 날씨 예보 데이터다.\n` +
+    `이 데이터에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
+    `날짜와 시각은 Asia/Tokyo 기준으로 해석해라.\n` +
+    `사용자가 말한 날짜 표현은 "${intent.dateExpression ?? "지정 없음"}"이다.\n` +
+    `weatherCode, 기온, 강수확률, 강수량을 임의로 만들거나 추측하지 마라.\n` +
+    `질문에 필요한 날짜가 제공된 예보 범위를 벗어나면 확인할 수 없다고 말해라.\n` +
+    `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n\n` +
+    JSON.stringify(
+      {
+        requestedLocation: intent.location,
+        resolvedLocation: weatherLocation,
+        dateExpression: intent.dateExpression,
+        forecast,
+      },
+      null,
+      2,
+    );
+
+  mode = "weather";
 }
-if (intent.intent !== "station-last-train") {
+
+if (
+  intent.intent !== "station-last-train" &&
+  intent.intent !== "weather"
+) {
   prompt = message;
   mode = "message";
 }
+
   } else {
     return NextResponse.json(
       {
