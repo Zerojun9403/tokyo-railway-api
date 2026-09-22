@@ -635,7 +635,7 @@ if (intent.intent === "weather") {
     `서버가 Asia/Tokyo 기준으로 사용자가 요청한 날짜를 이미 확정했다.\n` +
     `날짜를 다시 계산하거나 다른 날짜의 데이터를 선택하지 마라.\n` +
     `아래 selectedForecast에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
-    `weatherCode, 기온, 강수확률, 강수량을 임의로 만들거나 추측하지 마라.\n` +
+    `날씨 상태는 selectedForecast.weatherDescription을 그대로 사용하고 weatherCode를 임의로 해석하지 마라. 기온, 강수확률, 강수량도 임의로 만들거나 추측하지 마라.\n` +
     `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n` +
     `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
     JSON.stringify(

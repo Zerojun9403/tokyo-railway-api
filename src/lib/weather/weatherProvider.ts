@@ -16,6 +16,7 @@ export type WeatherLocation = {
 export type DailyWeather = {
   date: string;
   weatherCode: number;
+  weatherDescription: string;
   temperatureMax: number;
   temperatureMin: number;
   precipitationProbabilityMax: number;
@@ -29,6 +30,42 @@ type OpenMeteoGeocodingResult = {
   timezone?: string;
   country_code?: string;
   admin1?: string;
+};
+const getWeatherDescription = (weatherCode: number): string => {
+  if (weatherCode === 0) return "맑음";
+  if (weatherCode === 1) return "대체로 맑음";
+  if (weatherCode === 2) return "부분적으로 흐림";
+  if (weatherCode === 3) return "흐림";
+
+  if (weatherCode === 45 || weatherCode === 48) {
+    return "안개";
+  }
+
+  if ([51, 53, 55, 56, 57].includes(weatherCode)) {
+    return "이슬비";
+  }
+
+  if ([61, 63, 65, 66, 67].includes(weatherCode)) {
+    return "비";
+  }
+
+  if ([71, 73, 75, 77].includes(weatherCode)) {
+    return "눈";
+  }
+
+  if ([80, 81, 82].includes(weatherCode)) {
+    return "소나기";
+  }
+
+  if ([85, 86].includes(weatherCode)) {
+    return "눈 소나기";
+  }
+
+  if ([95, 96, 99].includes(weatherCode)) {
+    return "뇌우";
+  }
+
+  return "알 수 없음";
 };
 
 type OpenMeteoGeocodingResponse = {
@@ -204,15 +241,18 @@ export const getWeatherForecast = async (
   }
 
   return daily.time.map((date, index) => ({
-    date,
-    weatherCode: daily.weather_code?.[index] ?? -1,
-    temperatureMax:
-      daily.temperature_2m_max?.[index] ?? Number.NaN,
-    temperatureMin:
-      daily.temperature_2m_min?.[index] ?? Number.NaN,
-    precipitationProbabilityMax:
-      daily.precipitation_probability_max?.[index] ?? 0,
-    precipitationSum:
-      daily.precipitation_sum?.[index] ?? 0,
-  }));
+  date,
+  weatherCode: daily.weather_code?.[index] ?? -1,
+  weatherDescription: getWeatherDescription(
+    daily.weather_code?.[index] ?? -1,
+  ),
+  temperatureMax:
+    daily.temperature_2m_max?.[index] ?? Number.NaN,
+  temperatureMin:
+    daily.temperature_2m_min?.[index] ?? Number.NaN,
+  precipitationProbabilityMax:
+    daily.precipitation_probability_max?.[index] ?? 0,
+  precipitationSum:
+    daily.precipitation_sum?.[index] ?? 0,
+}));
 };
