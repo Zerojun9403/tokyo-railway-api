@@ -8,6 +8,7 @@ import {
   getWeatherForecast,
   resolveWeatherLocation,
 } from "@/lib/weather/weatherProvider";
+import { selectWeatherForecast } from "@/lib/weather/selectWeatherForecast";
 
 import { parsePhantomIntent } from "./parseIntent";
 
@@ -561,21 +562,44 @@ if (intent.intent === "weather") {
     );
   }
 
+  const selectedWeather = selectWeatherForecast(
+    forecast,
+    intent.dateExpression,
+  );
+
+  if (!selectedWeather) {
+    return NextResponse.json(
+      {
+        ok: false,
+        engine: "PHANTOM",
+        mode: "weather",
+        error: intent.dateExpression
+          ? `Weather date expression is not supported: ${intent.dateExpression}`
+          : `Weather forecast was not found for today: ${intent.location}`,
+      },
+      {
+        status: 400,
+        headers: CORS_HEADERS,
+      },
+    );
+  }
+
   prompt =
     `사용자가 "${message}"라고 질문했다.\n\n` +
     `아래는 Open-Meteo에서 확인한 실제 날씨 예보 데이터다.\n` +
-    `이 데이터에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
-    `날짜와 시각은 Asia/Tokyo 기준으로 해석해라.\n` +
-    `사용자가 말한 날짜 표현은 "${intent.dateExpression ?? "지정 없음"}"이다.\n` +
+    `서버가 Asia/Tokyo 기준으로 사용자가 요청한 날짜를 이미 확정했다.\n` +
+    `날짜를 다시 계산하거나 다른 날짜의 데이터를 선택하지 마라.\n` +
+    `아래 selectedForecast에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
     `weatherCode, 기온, 강수확률, 강수량을 임의로 만들거나 추측하지 마라.\n` +
-    `질문에 필요한 날짜가 제공된 예보 범위를 벗어나면 확인할 수 없다고 말해라.\n` +
-    `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n\n` +
+    `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n` +
+    `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
     JSON.stringify(
       {
         requestedLocation: intent.location,
         resolvedLocation: weatherLocation,
         dateExpression: intent.dateExpression,
-        forecast,
+        requestedDate: selectedWeather.requestedDate,
+        selectedForecast: selectedWeather.forecast,
       },
       null,
       2,
