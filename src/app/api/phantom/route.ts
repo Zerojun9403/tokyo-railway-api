@@ -5,6 +5,7 @@ import { normalizeLastTrainRequest } from "@/lib/lastTrain/normalizeLastTrainReq
 import { STATION_LAST_TRAIN_REGISTRY } from "@/lib/lastTrain/stationLineRegistry";
 import { getProvider } from "@/lib/providers/providerRegistry";
 import {
+  getCurrentWeather,
   getWeatherForecast,
   resolveWeatherLocation,
 } from "@/lib/weather/weatherProvider";
@@ -588,69 +589,116 @@ if (intent.intent === "weather") {
     );
   }
 
-  const forecast = await getWeatherForecast(
-    weatherLocation,
-  );
+  const isCurrentWeather =
+    intent.dateExpression === "지금" ||
+    intent.dateExpression === "현재";
 
-  if (forecast.length === 0) {
-    return NextResponse.json(
-      {
-        ok: false,
-        engine: "PHANTOM",
-        mode: "weather",
-        error: `Weather forecast was not found: ${intent.location}`,
-      },
-      {
-        status: 502,
-        headers: CORS_HEADERS,
-      },
+  if (isCurrentWeather) {
+    const currentWeather = await getCurrentWeather(
+      weatherLocation,
     );
+
+    if (!currentWeather) {
+      return NextResponse.json(
+        {
+          ok: false,
+          engine: "PHANTOM",
+          mode: "weather",
+          error: `Current weather was not found: ${intent.location}`,
+        },
+        {
+          status: 502,
+          headers: CORS_HEADERS,
+        },
+      );
+    }
+
+    prompt =
+      `사용자가 "${message}"라고 질문했다.\n\n` +
+      `아래는 Open-Meteo에서 확인한 실제 현재 날씨 데이터다.\n` +
+      `아래 currentWeather에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
+      `현재 기온은 currentWeather.temperature 값을 그대로 사용해라.\n` +
+      `날씨 상태는 currentWeather.weatherDescription을 그대로 사용하고 weatherCode를 임의로 해석하지 마라.\n` +
+      `기온이나 날씨 상태를 임의로 만들거나 추측하지 마라.\n` +
+      `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n` +
+      `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
+      JSON.stringify(
+        {
+          requestedLocation: intent.location,
+          resolvedLocation: weatherLocation,
+          dateExpression: intent.dateExpression,
+          currentWeather,
+        },
+        null,
+        2,
+      );
+
+    mode = "weather";
+  } else {
+    const forecast = await getWeatherForecast(
+      weatherLocation,
+    );
+
+    if (forecast.length === 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          engine: "PHANTOM",
+          mode: "weather",
+          error: `Weather forecast was not found: ${intent.location}`,
+        },
+        {
+          status: 502,
+          headers: CORS_HEADERS,
+        },
+      );
+    }
+
+    const selectedWeather = selectWeatherForecast(
+      forecast,
+      intent.dateExpression,
+    );
+
+    if (!selectedWeather) {
+      return NextResponse.json(
+        {
+          ok: false,
+          engine: "PHANTOM",
+          mode: "weather",
+          error: intent.dateExpression
+            ? `Weather date expression is not supported: ${intent.dateExpression}`
+            : `Weather forecast was not found for today: ${intent.location}`,
+        },
+        {
+          status: 400,
+          headers: CORS_HEADERS,
+        },
+      );
+    }
+
+    prompt =
+      `사용자가 "${message}"라고 질문했다.\n\n` +
+      `아래는 Open-Meteo에서 확인한 실제 날씨 예보 데이터다.\n` +
+      `서버가 Asia/Tokyo 기준으로 사용자가 요청한 날짜를 이미 확정했다.\n` +
+      `날짜를 다시 계산하거나 다른 날짜의 데이터를 선택하지 마라.\n` +
+      `아래 selectedForecast에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
+      `날씨 상태는 selectedForecast.weatherDescription을 그대로 사용하고 weatherCode를 임의로 해석하지 마라. 기온, 강수확률, 강수량도 임의로 만들거나 추측하지 마라.\n` +
+      `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n` +
+      `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
+      JSON.stringify(
+        {
+          requestedLocation: intent.location,
+          resolvedLocation: weatherLocation,
+          dateExpression: intent.dateExpression,
+          requestedDate: selectedWeather.requestedDate,
+          selectedForecast: selectedWeather.forecast,
+        },
+        null,
+        2,
+      );
+
+    mode = "weather";
   }
-
-  const selectedWeather = selectWeatherForecast(
-    forecast,
-    intent.dateExpression,
-  );
-
-  if (!selectedWeather) {
-    return NextResponse.json(
-      {
-        ok: false,
-        engine: "PHANTOM",
-        mode: "weather",
-        error: intent.dateExpression
-          ? `Weather date expression is not supported: ${intent.dateExpression}`
-          : `Weather forecast was not found for today: ${intent.location}`,
-      },
-      {
-        status: 400,
-        headers: CORS_HEADERS,
-      },
-    );
-  }
-
-  prompt =
-    `사용자가 "${message}"라고 질문했다.\n\n` +
-    `아래는 Open-Meteo에서 확인한 실제 날씨 예보 데이터다.\n` +
-    `서버가 Asia/Tokyo 기준으로 사용자가 요청한 날짜를 이미 확정했다.\n` +
-    `날짜를 다시 계산하거나 다른 날짜의 데이터를 선택하지 마라.\n` +
-    `아래 selectedForecast에 있는 정보만 사용해서 한국어로 짧고 명확하게 답변해라.\n` +
-    `날씨 상태는 selectedForecast.weatherDescription을 그대로 사용하고 weatherCode를 임의로 해석하지 마라. 기온, 강수확률, 강수량도 임의로 만들거나 추측하지 마라.\n` +
-    `지역명은 아래 geocoding 결과를 기준으로 사용해라.\n` +
-    `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
-    JSON.stringify(
-      {
-        requestedLocation: intent.location,
-        resolvedLocation: weatherLocation,
-        dateExpression: intent.dateExpression,
-        requestedDate: selectedWeather.requestedDate,
-        selectedForecast: selectedWeather.forecast,
-      },
-      null,
-      2,
-    );
-
-  mode = "weather";
 }
 
 if (

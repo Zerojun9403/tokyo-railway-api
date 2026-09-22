@@ -23,6 +23,14 @@ export type DailyWeather = {
   precipitationSum: number;
 };
 
+
+export type CurrentWeather = {
+  time: string;
+  temperature: number;
+  weatherCode: number;
+  weatherDescription: string;
+};
+
 type OpenMeteoGeocodingResult = {
   name?: string;
   latitude?: number;
@@ -81,7 +89,14 @@ type OpenMeteoDailyResponse = {
   precipitation_sum?: number[];
 };
 
+type OpenMeteoCurrentResponse = {
+  time?: string;
+  temperature_2m?: number;
+  weather_code?: number;
+};
+
 type OpenMeteoForecastResponse = {
+  current?: OpenMeteoCurrentResponse;
   daily?: OpenMeteoDailyResponse;
 };
 
@@ -241,18 +256,70 @@ export const getWeatherForecast = async (
   }
 
   return daily.time.map((date, index) => ({
-  date,
-  weatherCode: daily.weather_code?.[index] ?? -1,
-  weatherDescription: getWeatherDescription(
-    daily.weather_code?.[index] ?? -1,
-  ),
-  temperatureMax:
-    daily.temperature_2m_max?.[index] ?? Number.NaN,
-  temperatureMin:
-    daily.temperature_2m_min?.[index] ?? Number.NaN,
-  precipitationProbabilityMax:
-    daily.precipitation_probability_max?.[index] ?? 0,
-  precipitationSum:
-    daily.precipitation_sum?.[index] ?? 0,
-}));
+    date,
+    weatherCode: daily.weather_code?.[index] ?? -1,
+    weatherDescription: getWeatherDescription(
+      daily.weather_code?.[index] ?? -1,
+    ),
+    temperatureMax:
+      daily.temperature_2m_max?.[index] ?? Number.NaN,
+    temperatureMin:
+      daily.temperature_2m_min?.[index] ?? Number.NaN,
+    precipitationProbabilityMax:
+      daily.precipitation_probability_max?.[index] ?? 0,
+    precipitationSum:
+      daily.precipitation_sum?.[index] ?? 0,
+  }));
+};
+export const getCurrentWeather = async (
+  location: WeatherLocation,
+): Promise<CurrentWeather | null> => {
+  const url = new URL(OPEN_METEO_FORECAST_URL);
+
+  url.searchParams.set(
+    "latitude",
+    String(location.latitude),
+  );
+
+  url.searchParams.set(
+    "longitude",
+    String(location.longitude),
+  );
+
+  url.searchParams.set(
+    "current",
+    ["temperature_2m", "weather_code"].join(","),
+  );
+
+  url.searchParams.set("timezone", "Asia/Tokyo");
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(
+      `Open-Meteo current weather failed: ${response.status}`,
+    );
+  }
+
+  const data =
+    (await response.json()) as OpenMeteoForecastResponse;
+
+  const current = data.current;
+
+  if (
+    !current?.time ||
+    typeof current.temperature_2m !== "number" ||
+    typeof current.weather_code !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    time: current.time,
+    temperature: current.temperature_2m,
+    weatherCode: current.weather_code,
+    weatherDescription: getWeatherDescription(
+      current.weather_code,
+    ),
+  };
 };
