@@ -509,6 +509,7 @@ if (intent.intent === "station-last-train") {
     `방향명과 실제 막차 종착역은 서로 다를 수 있으므로 구분해서 설명해라.\n` +
     `found가 false인 방향은 막차 시각을 추측하지 마라.\n` +
     `여러 노선이 있으므로 노선별로 짧고 읽기 쉽게 정리해라.\n\n` +
+    `Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해라.\n\n` +
     JSON.stringify(
       {
         station: {
