@@ -335,6 +335,34 @@ async function handlePost(request: NextRequest) {
       apiKey,
       GEMINI_API_URL,
     );
+if (
+  intent.intent === "airport" &&
+  (intent.airport === "NRT" || intent.airport === "HND") &&
+  isNonEmptyString(intent.airline)
+) {
+  const airportPrompt = buildAirportPrompt({
+    airport: intent.airport,
+    airline: intent.airline,
+  });
+
+  if (!airportPrompt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        engine: "PHANTOM",
+        mode: "airport",
+        error: "Airline is not registered in the SPECTRE airport guide",
+      },
+      {
+        status: 404,
+        headers: CORS_HEADERS,
+      },
+    );
+  }
+
+  prompt = airportPrompt;
+  mode = "airport";
+}
 
 if (intent.intent === "route") {
   return NextResponse.json(
@@ -612,7 +640,8 @@ if (intent.intent === "weather") {
 
 if (
   intent.intent !== "station-last-train" &&
-  intent.intent !== "weather"
+  intent.intent !== "weather" &&
+  intent.intent !== "airport"
 ) {
   prompt = message;
   mode = "message";
