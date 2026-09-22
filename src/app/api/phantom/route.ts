@@ -151,6 +151,21 @@ const buildJourneyQuestionPrompt = (
   ].join("\n");
 };
 
+const buildGeneralPrompt = (message: string) => {
+  return [
+    "너는 Tokyo Railway Guide의 여행 어시스턴트 PHANTOM이다.",
+    "사용자의 일반적인 여행 질문이나 대화에 한국어로 자연스럽고 간결하게 답해줘.",
+    "",
+    "중요:",
+    "실시간 또는 실제 철도 운행 시각, 막차 시각, 열차 번호, 환승 경로, 공항 터미널, 날씨처럼 검증된 데이터가 필요한 정보는 추측하거나 만들어내지 마.",
+    "현재 제공된 검증 데이터가 없는 정보라면 확인할 수 없다고 명확하게 말해줘.",
+    "일반적인 여행 상식이나 대화는 답변해도 된다.",
+    "Markdown 문법(**, *, #, 목록 기호 등)을 사용하지 말고 일반 텍스트로 답변해줘.",
+    "",
+    "[사용자 메시지]",
+    message.trim(),
+  ].join("\n");
+};
 const AIRPORT_GUIDE = {
   NRT: {
     airportName: "나리타 국제공항",
@@ -643,7 +658,11 @@ if (
   intent.intent !== "weather" &&
   intent.intent !== "airport"
 ) {
-  prompt = message;
+  prompt =
+    intent.intent === "general"
+      ? buildGeneralPrompt(message)
+      : message;
+
   mode = "message";
 }
 
