@@ -206,4 +206,67 @@ export const STATION_LAST_TRAIN_REGISTRY: StationLastTrainStation[] = [
       },
     ],
   },
+    {
+    stationKey: "asakusa",
+
+    nameKo: "아사쿠사",
+    nameJa: "浅草",
+    nameEn: "Asakusa",
+
+    lines: [
+      /*
+       * =====================================================
+       * Tokyo Metro - Ginza Line
+       * =====================================================
+       *
+       * G19 아사쿠사는 긴자선 종점이므로
+       * 실제 출발 가능한 방향은 시부야 방면만 등록한다.
+       */
+      {
+        operator: "tokyo-metro",
+
+        lineId: "ginza",
+        lineNameKo: "긴자선",
+        lineNameJa: "銀座線",
+
+        stationId: "G19",
+
+        directions: [
+          {
+            directionId: "shibuya",
+            directionKo: "시부야 방면",
+            directionJa: "渋谷方面",
+          },
+        ],
+      },
+
+      /*
+       * =====================================================
+       * Toei - Asakusa Line
+       * =====================================================
+       */
+      {
+        operator: "toei",
+
+        lineId: "asakusa",
+        lineNameKo: "도에이 아사쿠사선",
+        lineNameJa: "都営浅草線",
+
+        stationId: "A18",
+
+        directions: [
+          {
+            directionId: "oshiage",
+            directionKo: "오시아게 방면",
+            directionJa: "押上方面",
+          },
+          {
+            directionId: "nishimagome",
+            directionKo: "니시마고메 방면",
+            directionJa: "西馬込方面",
+          },
+        ],
+      },
+    ],
+  },
 ];
