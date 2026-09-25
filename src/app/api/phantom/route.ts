@@ -310,6 +310,18 @@ async function handlePost(request: NextRequest) {
   
 
 
+  let parsedMessageIntent:
+    | Awaited<ReturnType<typeof parsePhantomIntent>>
+    | null = null;
+
+  if (message) {
+    parsedMessageIntent = await parsePhantomIntent(
+      message,
+      apiKey,
+      GEMINI_API_URL,
+    );
+  }
+
   let prompt: string = message ?? "";
   let mode:
     | "message"
@@ -318,10 +330,18 @@ async function handlePost(request: NextRequest) {
     | "station-last-train"
     | "weather" = "message";
 
-  if (isValidJourney(journey) && message) {
+  const isNewRouteRequest =
+    parsedMessageIntent?.intent === "route" ||
+    parsedMessageIntent?.intent === "last-train";
+
+  if (
+    isValidJourney(journey) &&
+    message &&
+    !isNewRouteRequest
+  ) {
     prompt = buildJourneyQuestionPrompt(journey, message);
     mode = "journey";
-  } else if (isValidJourney(journey)) {
+  } else if (isValidJourney(journey) && !message) {
     prompt = buildJourneyPrompt(journey);
     mode = "journey";
   } else if (
@@ -345,12 +365,8 @@ async function handlePost(request: NextRequest) {
 
     prompt = airportPrompt;
     mode = "airport";
-  } else if (message) {
-    const intent = await parsePhantomIntent(
-      message,
-      apiKey,
-      GEMINI_API_URL,
-    );
+  } else if (message && parsedMessageIntent) {
+    const intent = parsedMessageIntent;
 if (
   intent.intent === "airport" &&
   (intent.airport === "NRT" || intent.airport === "HND") &&
